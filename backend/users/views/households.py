@@ -4,9 +4,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from ..models import Household, HouseholdMembership, User
+from ..models import Household, HouseholdMembership, User, TenantInvitation
 from ..serializers import HouseholdSerializer, HouseholdMembershipSerializer, UserSerializer
 from ..permissions import IsLandlordOrAdmin, IsHouseholdLandlord
+from .invitations import send_invitation_email
 
 
 class HouseholdViewSet(viewsets.ModelViewSet):
@@ -127,7 +128,7 @@ class HouseholdViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsHouseholdLandlord])
     def add_member(self, request, pk=None):
-        """Add a member to the household."""
+        """Add a member to the household or send invitation if user doesn't exist."""
         household = self.get_object()
         email = request.data.get('email')
         first_name = request.data.get('first_name')
@@ -141,40 +142,80 @@ class HouseholdViewSet(viewsets.ModelViewSet):
             )
 
         # Try to find existing user
-        try:
+        user_exists = User.objects.filter(email=email).exists()
+
+        if user_exists:
             tenant = User.objects.get(email=email)
-        except User.DoesNotExist:
-            # Create new user if doesn't exist
-            tenant = User.objects.create_user(
+
+            # Check if already a member
+            if HouseholdMembership.objects.filter(household=household, tenant=tenant).exists():
+                return Response(
+                    {'error': 'User is already a member of this household'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Add existing user as member
+            membership = HouseholdMembership.objects.create(
+                household=household,
+                tenant=tenant,
+                role='tenant',
+                invited_by=request.user
+            )
+
+            return Response({
+                'id': membership.id,
+                'tenant': UserSerializer(tenant).data,
+                'role': membership.role,
+                'joined_at': membership.joined_at,
+                'is_active': membership.is_active,
+                'invitation_sent': False,
+            }, status=status.HTTP_201_CREATED)
+        else:
+            # User doesn't exist - create invitation and send email
+            # Check if invitation already exists
+            existing_invitation = TenantInvitation.objects.filter(
+                email=email,
+                household=household,
+                accepted_at__isnull=True
+            ).first()
+
+            if existing_invitation and existing_invitation.is_valid():
+                return Response(
+                    {'error': f'An invitation has already been sent to {email}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Create new invitation
+            invitation = TenantInvitation.objects.create(
+                email=email,
+                household=household,
+                invited_by=request.user
+            )
+
+            # Create inactive user account
+            inactive_user = User.objects.create_user(
                 email=email,
                 first_name=first_name or '',
                 last_name=last_name or '',
                 phone_number=phone_number or '',
-                role='tenant'
+                role='tenant',
+                is_active=False,  # Inactive until they accept invitation
             )
 
-        # Check if already a member
-        if HouseholdMembership.objects.filter(household=household, tenant=tenant).exists():
-            return Response(
-                {'error': 'User is already a member of this household'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            # Send invitation email
+            try:
+                send_invitation_email(invitation)
+            except Exception as e:
+                # Log error but don't fail the request
+                print(f"Failed to send invitation email: {e}")
 
-        # Add as member
-        membership = HouseholdMembership.objects.create(
-            household=household,
-            tenant=tenant,
-            role='tenant',
-            invited_by=request.user
-        )
-
-        return Response({
-            'id': membership.id,
-            'tenant': UserSerializer(tenant).data,
-            'role': membership.role,
-            'joined_at': membership.joined_at,
-            'is_active': membership.is_active,
-        }, status=status.HTTP_201_CREATED)
+            return Response({
+                'message': f'Invitation sent to {email}',
+                'email': email,
+                'invitation_id': invitation.id,
+                'invitation_sent': True,
+                'expires_at': invitation.expires_at,
+            }, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['delete'], url_path='members/(?P<user_id>[^/.]+)',
             permission_classes=[IsAuthenticated, IsHouseholdLandlord])
