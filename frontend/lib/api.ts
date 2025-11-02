@@ -8,6 +8,7 @@ import type {
   TenancyAgreement,
   ExtractedTenantData,
   TenantData,
+  TenancyConfirmData,
 } from '@/types/onboarding';
 import type { AnalyticsResponse } from '@/types/analytics';
 import type { TasksResponse, Task, CreateTaskData, UpdateTaskData, TaskFilters } from '@/types/tasks';
@@ -80,6 +81,31 @@ export const authAPI = {
         Authorization: `Bearer ${accessToken}`,
       },
     });
+    return response.data;
+  },
+
+  async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<{ message: string }> {
+    // Get access token from session
+    const { getSession } = await import('next-auth/react');
+    const session = await getSession();
+
+    if (!session?.accessToken) {
+      throw new Error('No access token found');
+    }
+
+    const response = await api.post<{ message: string }>(
+      '/api/users/change-password/',
+      {
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+      }
+    );
     return response.data;
   },
 };
@@ -263,6 +289,22 @@ export const onboardingAPI = {
         household_id: householdId,
         ...data,
       },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async confirmTenancy(
+    data: TenancyConfirmData,
+    accessToken: string
+  ): Promise<Tenancy> {
+    const response = await api.post<Tenancy>(
+      '/api/users/onboarding/tenancy/confirm/',
+      data,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -483,6 +525,32 @@ export const tenanciesAPI = {
     formData.append('file', file);
 
     const response = await api.post<TenancyResponse>(`/api/users/tenancies/${id}/upload_proof/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async uploadInventoryReport(id: number, file: File, accessToken: string): Promise<TenancyResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post<TenancyResponse>(`/api/users/tenancies/${id}/upload_inventory_report/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async uploadCheckoutReading(id: number, file: File, accessToken: string): Promise<TenancyResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post<TenancyResponse>(`/api/users/tenancies/${id}/upload_checkout_reading/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
         Authorization: `Bearer ${accessToken}`,

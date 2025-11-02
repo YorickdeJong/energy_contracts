@@ -421,6 +421,68 @@ class TenancyViewSet(viewsets.ModelViewSet):
             'message': 'Proof document uploaded successfully.'
         })
 
+    @action(detail=True, methods=['post'])
+    def upload_inventory_report(self, request, pk=None):
+        """Upload inventory report for a tenancy."""
+        tenancy = self.get_object()
+
+        # Check permissions
+        if not request.user.is_admin() and tenancy.household.landlord != request.user:
+            return Response({
+                'success': False,
+                'error': 'You do not have permission to upload inventory report for this tenancy.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Get file from request
+        file = request.FILES.get('file')
+        if not file:
+            return Response({
+                'success': False,
+                'error': 'No file provided.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save file
+        tenancy.inventory_report = file
+        tenancy.save()
+
+        serializer = TenancySerializer(tenancy)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': 'Inventory report uploaded successfully.'
+        })
+
+    @action(detail=True, methods=['post'])
+    def upload_checkout_reading(self, request, pk=None):
+        """Upload checkout reading for a tenancy."""
+        tenancy = self.get_object()
+
+        # Check permissions
+        if not request.user.is_admin() and tenancy.household.landlord != request.user:
+            return Response({
+                'success': False,
+                'error': 'You do not have permission to upload checkout reading for this tenancy.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Get file from request
+        file = request.FILES.get('file')
+        if not file:
+            return Response({
+                'success': False,
+                'error': 'No file provided.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save file
+        tenancy.checkout_reading = file
+        tenancy.save()
+
+        serializer = TenancySerializer(tenancy)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': 'Checkout reading uploaded successfully.'
+        })
+
     def _add_renter_to_tenancy(self, tenancy, email, first_name, last_name, is_primary, invited_by):
         """Helper method to add a renter to a tenancy."""
         # Check if user exists

@@ -30,11 +30,30 @@ export interface TenancyAgreement {
   processed_at: string | null;
 }
 
+export interface RenterExtractedData {
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone_number: string | null;
+  is_primary: boolean;
+}
+
+export interface ExtractedRenterWithId extends RenterExtractedData {
+  id: string;
+  isEditing?: boolean;
+}
+
 export interface ExtractedTenantData {
   first_name: string | null;
   last_name: string | null;
   email: string | null;
   phone_number: string | null;
+  // New tenancy-specific fields
+  start_date: string | null;
+  end_date: string | null;
+  monthly_rent: number | null;
+  deposit: number | null;
+  renters: RenterExtractedData[];
 }
 
 export interface TenantData {
@@ -55,4 +74,14 @@ export interface UploadedFile {
   agreementId?: number;
   extractedData?: ExtractedTenantData;
   error?: string;
+  url?: string;
+}
+
+export interface TenancyConfirmData {
+  tenancy_agreement_id: number;
+  tenancy_name: string;
+  start_date: string;
+  end_date: string | null;
+  monthly_rent: number;
+  deposit: number;
 }

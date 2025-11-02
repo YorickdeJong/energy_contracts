@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Card, Button, Input, Badge } from "@/app/components/ui";
 import { UserIcon, ShieldCheckIcon, CheckCircleIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { authAPI } from "@/lib/api";
+import ChangePasswordModal from "@/app/components/profile/ChangePasswordModal";
 
 export default function ProfilePage() {
   const { data: session, update } = useSession();
@@ -14,6 +15,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [formData, setFormData] = useState({
     first_name: user?.first_name || "",
     last_name: user?.last_name || "",
@@ -227,7 +229,12 @@ export default function ProfilePage() {
             <p className="text-sm text-text-secondary mb-4">
               Last changed: Never
             </p>
-            <Button variant="secondary">Change Password</Button>
+            <Button
+              variant="secondary"
+              onClick={() => setShowPasswordModal(true)}
+            >
+              Change Password
+            </Button>
           </div>
         </div>
       </Card>
@@ -242,6 +249,16 @@ export default function ProfilePage() {
         </p>
         <Button variant="danger">Delete Account</Button>
       </Card>
+
+      {/* Password Change Modal */}
+      <ChangePasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={() => {
+          setSuccess("Password changed successfully!");
+          setTimeout(() => setSuccess(null), 5000);
+        }}
+      />
     </div>
   );
 }

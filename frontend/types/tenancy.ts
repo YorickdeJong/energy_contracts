@@ -26,12 +26,15 @@ export interface Tenancy {
   id: number;
   household: number;
   household_name: string;
+  name: string;
   status: TenancyStatus;
   start_date: string;
   end_date: string | null;
   monthly_rent: string; // Decimal as string
   deposit: string; // Decimal as string
   proof_document: string | null;
+  inventory_report: string | null;
+  checkout_reading: string | null;
   renter_count: number;
   renters: Renter[];
   primary_renter: RenterUser | null;
@@ -43,14 +46,20 @@ export interface TenancyListItem {
   id: number;
   household: number;
   household_name: string;
+  name: string;
   status: TenancyStatus;
   start_date: string;
   end_date: string | null;
   monthly_rent: string;
   deposit: string;
+  proof_document: string | null;
+  inventory_report: string | null;
+  checkout_reading: string | null;
   renter_count: number;
+  renters: Renter[];
   primary_renter: PrimaryRenter | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface CreateTenancyData {

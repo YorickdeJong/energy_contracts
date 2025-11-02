@@ -9,6 +9,7 @@ from .views import (
     HouseholdViewSet,
     InvitationViewSet,
 )
+from .views.auth import change_password
 from .views.tenancies import TenancyViewSet
 
 app_name = 'users'
@@ -34,5 +35,6 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
     path('refresh/', RefreshTokenView.as_view(), name='refresh'),
     path('me/', CurrentUserView.as_view(), name='current-user'),
+    path('change-password/', change_password, name='change-password'),
     path('', include(router.urls)),
 ]

@@ -144,50 +144,49 @@ export default function DashboardPage() {
           {/* Onboarding Banner */}
           {showOnboardingBanner && (
             <div className="mt-8 relative">
-              <div className="bg-gradient-to-r from-primary to-primary-dark rounded-xl p-6 shadow-lg">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-200/70 rounded-xl p-6 shadow-sm">
                 <button
                   onClick={handleDismissPermanently}
-                  className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/20 transition-colors"
+                  className="absolute top-4 right-4 p-1 rounded-lg hover:bg-blue-300/50 transition-colors"
                   aria-label="Dismiss permanently"
                 >
-                  <XMarkIcon className="w-5 h-5 text-white" />
+                  <XMarkIcon className="w-5 h-5 text-blue-700" />
                 </button>
                 <div className="flex items-start space-x-4">
                   <div className="flex-shrink-0">
-                    <div className="p-3 bg-white/20 rounded-xl">
-                      <RocketLaunchIcon className="w-8 h-8 text-white" />
+                    <div className="p-3 bg-blue-300/50 rounded-xl">
+                      <RocketLaunchIcon className="w-8 h-8 text-blue-700" />
                     </div>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-white mb-2">
+                    <h3 className="text-2xl font-bold text-blue-900 mb-2">
                       Complete Your Setup
                     </h3>
-                    <p className="text-white/90 mb-4">
+                    <p className="text-blue-800 mb-4">
                       Get started by adding your first household and tenants to unlock all features
                     </p>
                     <div className="flex items-center space-x-2 mb-4">
-                      <div className="flex-1 bg-white/20 rounded-full h-2">
+                      <div className="flex-1 bg-blue-300 rounded-full h-2">
                         <div
-                          className="bg-white rounded-full h-2 transition-all duration-300"
+                          className="bg-blue-700 rounded-full h-2 transition-all duration-300"
                           style={{ width: `${Math.min((households.length / 1) * 100, 100)}%` }}
                         />
                       </div>
-                      <span className="text-sm text-white font-medium">
+                      <span className="text-sm text-blue-800 font-medium">
                         {households.length} household{households.length !== 1 ? 's' : ''} added
                       </span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <Button
                         onClick={handleStartOnboarding}
-                        variant="secondary"
-                        className="bg-white text-primary hover:bg-gray-100"
+                        variant="primary"
                       >
                         Get Started
                       </Button>
                       <Button
                         onClick={handleRemindLater}
-                        variant="ghost"
-                        className="text-white hover:bg-white/10"
+                        variant="secondary"
+                        className="text-blue-800 hover:bg-blue-300/20"
                       >
                         Remind Me Later
                       </Button>

@@ -2,11 +2,13 @@ from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from pydantic import ValidationError as PydanticValidationError
 
 from ..models import User
 from ..serializers import (
@@ -14,6 +16,8 @@ from ..serializers import (
     UserRegistrationSerializer,
     CustomTokenObtainPairSerializer,
 )
+from ..schemas import PasswordChangeSchema
+from ..emails import send_password_changed_email
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -175,3 +179,51 @@ class CurrentUserView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    """
+    Change user password.
+
+    POST /api/users/change-password/
+    {
+        "current_password": "currentpassword",
+        "new_password": "newpassword123",
+        "confirm_password": "newpassword123"
+    }
+
+    Returns:
+    {
+        "message": "Password changed successfully"
+    }
+    """
+    try:
+        # Validate with Pydantic
+        password_data = PasswordChangeSchema(**request.data)
+
+        # Verify current password
+        if not request.user.check_password(password_data.current_password):
+            return Response(
+                {'error': 'Current password is incorrect'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Set new password
+        request.user.set_password(password_data.new_password)
+        request.user.save()
+
+        # Send confirmation email
+        send_password_changed_email(request.user)
+
+        return Response(
+            {'message': 'Password changed successfully'},
+            status=status.HTTP_200_OK
+        )
+
+    except PydanticValidationError as e:
+        return Response(
+            {'errors': e.errors()},
+            status=status.HTTP_400_BAD_REQUEST
+        )

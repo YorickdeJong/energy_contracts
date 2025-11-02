@@ -17,6 +17,9 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     musl-dev \
     libpq-dev \
+    libreoffice-writer \
+    libreoffice-core \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies

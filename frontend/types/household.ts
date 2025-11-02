@@ -7,6 +7,7 @@ export interface Household {
     email: string;
     first_name: string;
     last_name: string;
+    phone_number: string | null;
   };
   member_count: number;
   created_at: string;

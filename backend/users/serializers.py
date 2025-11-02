@@ -99,9 +99,19 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 
+class LandlordSerializer(serializers.ModelSerializer):
+    """Simplified user serializer for landlord data."""
+
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'first_name', 'last_name', 'phone_number')
+        read_only_fields = fields
+
+
 class HouseholdSerializer(serializers.ModelSerializer):
     """Serializer for Household model."""
     member_count = serializers.ReadOnlyField()
+    landlord = LandlordSerializer(read_only=True)
 
     class Meta:
         model = Household
@@ -255,12 +265,15 @@ class TenancySerializer(serializers.ModelSerializer):
             'id',
             'household',
             'household_name',
+            'name',
             'status',
             'start_date',
             'end_date',
             'monthly_rent',
             'deposit',
             'proof_document',
+            'inventory_report',
+            'checkout_reading',
             'renter_count',
             'renters',
             'primary_renter',
@@ -322,11 +335,13 @@ class TenancyListSerializer(serializers.ModelSerializer):
             'id',
             'household',
             'household_name',
+            'name',
             'status',
             'start_date',
             'end_date',
             'monthly_rent',
             'deposit',
+            'proof_document',
             'renter_count',
             'primary_renter',
             'created_at',

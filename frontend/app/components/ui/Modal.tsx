@@ -8,7 +8,7 @@ export interface ModalProps {
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
-  maxWidth?: "sm" | "md" | "lg" | "xl";
+  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "full";
   showCloseButton?: boolean;
 }
 
@@ -17,7 +17,7 @@ const Modal = ({
   onClose,
   title,
   children,
-  maxWidth = "md",
+  maxWidth = "lg",
   showCloseButton = true,
 }: ModalProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -49,8 +49,10 @@ const Modal = ({
   const maxWidthStyles = {
     sm: "max-w-sm",
     md: "max-w-md",
-    lg: "max-w-lg",
-    xl: "max-w-xl",
+    lg: "max-w-2xl",
+    xl: "max-w-4xl",
+    "2xl": "max-w-6xl",
+    full: "max-w-[95vw]",
   };
 
   if (!isOpen) return null;
@@ -68,7 +70,7 @@ const Modal = ({
         aria-labelledby={title ? "modal-title" : undefined}
       >
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center justify-between px-8 py-5 border-b border-border">
             {title && (
               <h2
                 id="modal-title"
@@ -100,7 +102,7 @@ const Modal = ({
             )}
           </div>
         )}
-        <div className="px-6 py-4">{children}</div>
+        <div className="px-8 py-6">{children}</div>
       </div>
     </div>,
     document.body

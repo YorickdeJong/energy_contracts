@@ -5,6 +5,7 @@ from typing import Dict, Optional
 import google.generativeai as genai
 from django.conf import settings
 from .base import BaseAIProvider
+from ai_services.utils.file_converter import FileConverter
 
 logger = logging.getLogger(__name__)
 
@@ -124,11 +125,31 @@ Example response format:
                 f"Unsupported file type. Supported types: {', '.join(self.SUPPORTED_MIME_TYPES.keys())}"
             )
 
-        try:
-            logger.info(f"Uploading file to Gemini: {file_path}")
+        # Initialize file converter for handling unsupported formats
+        converter = FileConverter()
+        converted_file_path = None
 
-            # Upload file to Gemini
-            uploaded_file = genai.upload_file(file_path)
+        try:
+            # Convert file to PDF if needed (DOCX, DOC, images)
+            logger.info(f"Checking if file needs conversion: {file_path}")
+            if converter.needs_conversion(file_path):
+                logger.info(f"Converting file to PDF: {file_path}")
+                converted_file_path = converter.convert_to_pdf(file_path)
+
+                if not converted_file_path:
+                    raise ValueError("File conversion to PDF failed")
+
+                logger.info(f"File converted successfully to: {converted_file_path}")
+                upload_file_path = converted_file_path
+                upload_mime_type = 'application/pdf'  # Converted files are always PDF
+            else:
+                upload_file_path = file_path
+                upload_mime_type = self._get_mime_type(file_path)
+
+            logger.info(f"Uploading file to Gemini: {upload_file_path} (MIME type: {upload_mime_type})")
+
+            # Upload file to Gemini with explicit MIME type
+            uploaded_file = genai.upload_file(upload_file_path, mime_type=upload_mime_type)
             logger.info(f"File uploaded successfully: {uploaded_file.name}")
 
             # Generate content with the uploaded file
@@ -176,3 +197,9 @@ Example response format:
         except Exception as e:
             logger.error(f"Error extracting tenant data: {str(e)}")
             raise Exception(f"Failed to extract tenant data: {str(e)}")
+
+        finally:
+            # Clean up converted file if one was created
+            if converted_file_path:
+                converter.cleanup_all()
+                logger.info(f"Cleaned up converted file: {converted_file_path}")

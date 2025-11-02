@@ -118,26 +118,26 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-text-primary">Analytics</h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Energy consumption and cost insights
+          <h1 className="text-4xl font-semibold text-text-primary">Analytics</h1>
+          <p className="mt-2 text-lg text-text-secondary">
+            Track your energy consumption and costs
           </p>
         </div>
 
         {/* Period Selector */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 bg-background-secondary p-1 rounded-xl">
           {(['week', 'month', 'year'] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+              className={`rounded-lg px-6 py-2.5 text-sm font-medium transition-all ${
                 period === p
-                  ? 'bg-primary text-white shadow-md'
-                  : 'bg-background-secondary text-text-secondary hover:bg-border'
+                  ? 'bg-white text-primary shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -149,89 +149,89 @@ export default function AnalyticsPage() {
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Total Consumption */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-text-secondary">
-                Total Consumption
-              </p>
-              <p className="mt-2 text-3xl font-semibold text-text-primary">
-                {analytics?.metrics.totalConsumption.toFixed(1)}
-                <span className="ml-1 text-lg text-text-secondary">kWh</span>
-              </p>
-              <div className="mt-2 flex items-center gap-1">
-                {getTrendIcon(analytics?.metrics.trend || 'stable')}
-                <span className={`text-sm font-medium ${getTrendColor(analytics?.metrics.trend || 'stable')}`}>
-                  {analytics?.metrics.trendPercentage.toFixed(1)}%
-                </span>
-                <span className="text-sm text-text-secondary">vs last {period}</span>
-              </div>
+        <Card className="p-6 hover:shadow-lg transition-shadow border-l-4 border-l-primary">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg">
+              <BoltIcon className="h-7 w-7 text-white" />
             </div>
-            <div className="rounded-xl bg-primary/10 p-3">
-              <BoltIcon className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-text-secondary uppercase tracking-wide">
+              Total Consumption
+            </p>
+            <p className="mt-2 text-4xl font-bold text-text-primary">
+              {analytics?.metrics.totalConsumption.toFixed(1)}
+              <span className="ml-2 text-xl text-text-tertiary font-normal">kWh</span>
+            </p>
+            <div className="mt-3 flex items-center gap-2 px-3 py-1.5 bg-background-secondary rounded-lg w-fit">
+              {getTrendIcon(analytics?.metrics.trend || 'stable')}
+              <span className={`text-sm font-semibold ${getTrendColor(analytics?.metrics.trend || 'stable')}`}>
+                {analytics?.metrics.trendPercentage.toFixed(1)}%
+              </span>
+              <span className="text-sm text-text-tertiary">vs last {period}</span>
             </div>
           </div>
         </Card>
 
         {/* Average Daily */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-text-secondary">
-                Average Daily
-              </p>
-              <p className="mt-2 text-3xl font-semibold text-text-primary">
-                {analytics?.metrics.averageDaily.toFixed(1)}
-                <span className="ml-1 text-lg text-text-secondary">kWh</span>
-              </p>
-              <p className="mt-2 text-sm text-text-secondary">
-                Per day this {period}
-              </p>
+        <Card className="p-6 hover:shadow-lg transition-shadow border-l-4 border-l-green-500">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 shadow-lg">
+              <ChartBarIcon className="h-7 w-7 text-white" />
             </div>
-            <div className="rounded-xl bg-success/10 p-3">
-              <ChartBarIcon className="h-6 w-6 text-success" />
-            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-text-secondary uppercase tracking-wide">
+              Average Daily
+            </p>
+            <p className="mt-2 text-4xl font-bold text-text-primary">
+              {analytics?.metrics.averageDaily.toFixed(1)}
+              <span className="ml-2 text-xl text-text-tertiary font-normal">kWh</span>
+            </p>
+            <p className="mt-3 text-sm text-text-secondary px-3 py-1.5 bg-green-50 rounded-lg w-fit">
+              Per day this {period}
+            </p>
           </div>
         </Card>
 
         {/* Peak Usage */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-text-secondary">
-                Peak Usage
-              </p>
-              <p className="mt-2 text-3xl font-semibold text-text-primary">
-                {analytics?.metrics.peakUsage.toFixed(1)}
-                <span className="ml-1 text-lg text-text-secondary">kWh</span>
-              </p>
-              <p className="mt-2 text-sm text-text-secondary">
-                Highest single day
-              </p>
+        <Card className="p-6 hover:shadow-lg transition-shadow border-l-4 border-l-orange-500">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-lg">
+              <ArrowTrendingUpIcon className="h-7 w-7 text-white" />
             </div>
-            <div className="rounded-xl bg-warning/10 p-3">
-              <ArrowTrendingUpIcon className="h-6 w-6 text-warning" />
-            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-text-secondary uppercase tracking-wide">
+              Peak Usage
+            </p>
+            <p className="mt-2 text-4xl font-bold text-text-primary">
+              {analytics?.metrics.peakUsage.toFixed(1)}
+              <span className="ml-2 text-xl text-text-tertiary font-normal">kWh</span>
+            </p>
+            <p className="mt-3 text-sm text-text-secondary px-3 py-1.5 bg-orange-50 rounded-lg w-fit">
+              Highest single day
+            </p>
           </div>
         </Card>
 
         {/* Cost Savings */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-text-secondary">
-                Cost Savings
-              </p>
-              <p className="mt-2 text-3xl font-semibold text-text-primary">
-                ${analytics?.metrics.costSavings.toFixed(2)}
-              </p>
-              <p className="mt-2 text-sm text-success">
-                Compared to average
-              </p>
+        <Card className="p-6 hover:shadow-lg transition-shadow border-l-4 border-l-emerald-500">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg">
+              <CurrencyDollarIcon className="h-7 w-7 text-white" />
             </div>
-            <div className="rounded-xl bg-success/10 p-3">
-              <CurrencyDollarIcon className="h-6 w-6 text-success" />
-            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-text-secondary uppercase tracking-wide">
+              Cost Savings
+            </p>
+            <p className="mt-2 text-4xl font-bold text-emerald-600">
+              ${analytics?.metrics.costSavings.toFixed(2)}
+            </p>
+            <p className="mt-3 text-sm font-medium text-emerald-600 px-3 py-1.5 bg-emerald-50 rounded-lg w-fit">
+              Compared to average
+            </p>
           </div>
         </Card>
       </div>
@@ -239,31 +239,36 @@ export default function AnalyticsPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Usage History Chart */}
-        <Card>
-          <h2 className="text-lg font-semibold text-text-primary mb-4">
-            Usage Trend
-          </h2>
-          <div className="space-y-3">
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <ChartBarIcon className="h-5 w-5 text-blue-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-text-primary">
+              Usage Trend
+            </h2>
+          </div>
+          <div className="space-y-4">
             {analytics?.usageHistory.map((day, index) => {
               const maxConsumption = Math.max(...(analytics?.usageHistory.map(d => d.consumption) || []));
               const barWidth = (day.consumption / maxConsumption) * 100;
 
               return (
-                <div key={index} className="space-y-1">
+                <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-text-secondary">
+                    <span className="font-medium text-text-secondary">
                       {new Date(day.date).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric'
                       })}
                     </span>
-                    <span className="font-medium text-text-primary">
+                    <span className="font-semibold text-text-primary">
                       {day.consumption.toFixed(1)} kWh
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-background-secondary overflow-hidden">
+                  <div className="relative h-3 w-full rounded-full bg-gradient-to-r from-blue-100 to-blue-50 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-primary transition-all"
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 shadow-sm"
                       style={{ width: `${barWidth}%` }}
                     />
                   </div>
@@ -274,35 +279,40 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Cost Breakdown */}
-        <Card>
-          <h2 className="text-lg font-semibold text-text-primary mb-4">
-            Cost Breakdown
-          </h2>
-          <div className="space-y-4">
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <CurrencyDollarIcon className="h-5 w-5 text-emerald-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-text-primary">
+              Cost Breakdown
+            </h2>
+          </div>
+          <div className="space-y-5">
             {analytics?.costBreakdown.map((item, index) => (
               <div key={index} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className="h-3 w-3 rounded-full"
+                      className="h-4 w-4 rounded-lg shadow-sm"
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="text-sm font-medium text-text-primary">
+                    <span className="text-sm font-semibold text-text-primary">
                       {item.category}
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant="secondary">
+                    <span className="text-xs font-medium text-text-secondary bg-background-secondary px-2.5 py-1 rounded-full">
                       {item.percentage}%
-                    </Badge>
-                    <span className="text-sm font-semibold text-text-primary">
+                    </span>
+                    <span className="text-sm font-bold text-text-primary min-w-[70px] text-right">
                       ${item.amount.toFixed(2)}
                     </span>
                   </div>
                 </div>
-                <div className="h-2 w-full rounded-full bg-background-secondary overflow-hidden">
+                <div className="relative h-3 w-full rounded-full bg-background-secondary overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all"
+                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 shadow-sm"
                     style={{
                       width: `${item.percentage}%`,
                       backgroundColor: item.color,
@@ -314,12 +324,12 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Total */}
-          <div className="mt-6 pt-4 border-t border-border">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-text-primary">
+          <div className="mt-6 pt-6 border-t-2 border-border">
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl">
+              <span className="text-sm font-bold text-text-primary uppercase tracking-wide">
                 Total Cost
               </span>
-              <span className="text-xl font-bold text-text-primary">
+              <span className="text-2xl font-bold text-emerald-600">
                 ${analytics?.costBreakdown.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}
               </span>
             </div>

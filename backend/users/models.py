@@ -34,6 +34,16 @@ class UserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
+    def make_random_password(self, length=10,
+                            allowed_chars='abcdefghjkmnpqrstuvwxyz'
+                                         'ABCDEFGHJKLMNPQRSTUVWXYZ'
+                                         '23456789'):
+        """
+        Generate a random password with the given length and allowed chars.
+        This matches Django's BaseUserManager.make_random_password signature.
+        """
+        return ''.join(secrets.choice(allowed_chars) for _ in range(length))
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     """Custom user model using email as the unique identifier."""
@@ -262,6 +272,18 @@ class Tenancy(models.Model):
         upload_to='tenancy_proofs/%Y/%m/',
         null=True,
         blank=True
+    )
+    inventory_report = models.FileField(
+        upload_to='inventory_reports/%Y/%m/',
+        null=True,
+        blank=True,
+        help_text='Inventory report document for this tenancy'
+    )
+    checkout_reading = models.FileField(
+        upload_to='checkout_readings/%Y/%m/',
+        null=True,
+        blank=True,
+        help_text='Checkout reading document for this tenancy'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

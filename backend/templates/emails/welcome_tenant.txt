@@ -1,0 +1,29 @@
+Welcome to Energy Contracts
+
+Hi {{ user.first_name }},
+
+Your landlord, {{ landlord_name }}, has created an account for you to access your household information and energy contract details.
+
+YOUR LOGIN CREDENTIALS
+=======================
+Email: {{ user.email }}
+Temporary Password: {{ temporary_password }}
+
+IMPORTANT: Please change your password after logging in for the first time. You can do this in your profile settings.
+
+Log in here: {{ login_url }}
+
+WHAT'S NEXT?
+============
+- Log in using your credentials above
+- Change your password in Profile Settings
+- View your household information
+- Access your energy contract details
+
+If you have any questions or didn't expect this email, please contact your landlord or reach out to our support team.
+
+Best regards,
+Energy Contracts Team
+
+---
+This is an automated message, please do not reply to this email.

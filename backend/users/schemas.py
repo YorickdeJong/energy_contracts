@@ -366,3 +366,25 @@ class StartMoveoutSchema(BaseModel):
         if v < date.today():
             raise ValueError('End date cannot be in the past')
         return v
+
+
+# ==================== Password Management Schemas ====================
+
+class PasswordChangeSchema(BaseModel):
+    """Schema for changing password"""
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=128)
+    confirm_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator('new_password')
+    def validate_new_password(cls, v):
+        if len(v) < 8:
+            raise ValueError('New password must be at least 8 characters long')
+        return v
+
+    @model_validator(mode='after')
+    def validate_passwords_match(self):
+        """Validate that new passwords match"""
+        if self.new_password != self.confirm_password:
+            raise ValueError('New passwords do not match')
+        return self

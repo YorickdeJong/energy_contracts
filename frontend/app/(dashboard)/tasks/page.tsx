@@ -187,7 +187,7 @@ export default function TasksPage() {
       case 'pending':
         return <Badge variant="secondary">Pending</Badge>;
       case 'cancelled':
-        return <Badge variant="danger">Cancelled</Badge>;
+        return <Badge variant="error">Cancelled</Badge>;
     }
   };
 
@@ -219,8 +219,8 @@ export default function TasksPage() {
 
         <Button
           onClick={() => setIsCreateModalOpen(true)}
-          leftIcon={<PlusIcon className="h-5 w-5" />}
         >
+          <PlusIcon className="h-5 w-5 mr-2" />
           Create Task
         </Button>
       </div>
@@ -305,7 +305,8 @@ export default function TasksPage() {
           description={searchQuery ? "Try adjusting your search" : "Create your first task to get started"}
           action={
             !searchQuery ? (
-              <Button onClick={() => setIsCreateModalOpen(true)} leftIcon={<PlusIcon className="h-5 w-5" />}>
+              <Button onClick={() => setIsCreateModalOpen(true)}>
+                <PlusIcon className="h-5 w-5 mr-2" />
                 Create Task
               </Button>
             ) : undefined
@@ -378,8 +379,8 @@ export default function TasksPage() {
                           size="sm"
                           variant="primary"
                           onClick={() => handleUpdateStatus(task.id, 'completed')}
-                          leftIcon={<CheckCircleIcon className="h-4 w-4" />}
                         >
+                          <CheckCircleIcon className="h-4 w-4 mr-1" />
                           Complete
                         </Button>
                       )}

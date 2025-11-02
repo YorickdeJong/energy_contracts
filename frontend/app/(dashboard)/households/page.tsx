@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { Card, Button, EmptyState, Modal, Input } from "@/app/components/ui";
 import { householdsAPI } from "@/lib/api";
 import type { Household, CreateHouseholdData } from "@/types/household";
-import { BuildingOfficeIcon, PlusIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { BuildingOfficeIcon, PlusIcon, UsersIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 export default function HouseholdsPage() {
   const router = useRouter();
@@ -17,6 +17,8 @@ export default function HouseholdsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   useEffect(() => {
     if (session) {
@@ -55,6 +57,25 @@ export default function HouseholdsPage() {
       loadHouseholds();
     } catch (error: any) {
       throw error;
+    }
+  };
+
+  const handleDeleteHousehold = async (householdId: number) => {
+    try {
+      setDeletingId(householdId);
+      const accessToken = (session as any)?.accessToken;
+      if (!accessToken) {
+        setError("No access token found. Please log in again.");
+        return;
+      }
+
+      await householdsAPI.delete(householdId, accessToken);
+      setDeleteConfirmId(null);
+      loadHouseholds();
+    } catch (error: any) {
+      setError(error.response?.data?.error || "Failed to delete household");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -115,10 +136,24 @@ export default function HouseholdsPage() {
           {households.map((household) => (
             <Card
               key={household.id}
-              className="p-6 hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+              className="p-6 hover:shadow-lg transition-shadow duration-200 cursor-pointer relative"
               onClick={() => router.push(`/households/${household.id}`)}
             >
-              <div className="flex items-start justify-between">
+              {/* Delete button - only for landlords/admins */}
+              {(userRole === 'landlord' || userRole === 'admin') && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteConfirmId(household.id);
+                  }}
+                  className="absolute top-4 right-4 p-2 rounded-lg hover:bg-error/10 transition-colors group"
+                  title="Delete household"
+                >
+                  <TrashIcon className="h-5 w-5 text-text-tertiary group-hover:text-error transition-colors" />
+                </button>
+              )}
+
+              <div className="flex items-start justify-between pr-10">
                 <div className="flex-1">
                   <h3 className="text-lg font-medium text-text-primary">
                     {household.name}
@@ -144,11 +179,20 @@ export default function HouseholdsPage() {
       )}
 
       {(userRole === 'landlord' || userRole === 'admin') && (
-        <CreateHouseholdModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onSubmit={handleCreateHousehold}
-        />
+        <>
+          <CreateHouseholdModal
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            onSubmit={handleCreateHousehold}
+          />
+          <DeleteConfirmModal
+            isOpen={deleteConfirmId !== null}
+            onClose={() => setDeleteConfirmId(null)}
+            onConfirm={() => deleteConfirmId && handleDeleteHousehold(deleteConfirmId)}
+            householdName={households.find(h => h.id === deleteConfirmId)?.name || ''}
+            isDeleting={deletingId === deleteConfirmId}
+          />
+        </>
       )}
     </div>
   );
@@ -235,6 +279,60 @@ function CreateHouseholdModal({
           </Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function DeleteConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  householdName,
+  isDeleting,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  householdName: string;
+  isDeleting: boolean;
+}) {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Delete Household" maxWidth="md">
+      <div className="space-y-4">
+        <div className="flex items-start gap-4 p-4 bg-error/10 border border-error/20 rounded-lg">
+          <TrashIcon className="h-6 w-6 text-error flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-error">
+              This action cannot be undone
+            </p>
+            <p className="text-sm text-text-secondary mt-1">
+              Are you sure you want to delete <strong>{householdName}</strong>?
+              This will permanently remove the household and all associated data.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex space-x-3 pt-4">
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            onClick={onClose}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            fullWidth
+            onClick={onConfirm}
+            isLoading={isDeleting}
+          >
+            Delete Household
+          </Button>
+        </div>
+      </div>
     </Modal>
   );
 }

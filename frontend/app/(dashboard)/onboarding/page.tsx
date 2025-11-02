@@ -17,8 +17,24 @@ import type {
   UploadedFile,
   ExtractedTenantData,
   TenantData,
+  TenancyConfirmData,
+  RenterExtractedData,
+  ExtractedRenterWithId,
 } from "@/types/onboarding";
 import type { Household } from "@/types/household";
+import {
+  DocumentTextIcon,
+  PhotoIcon,
+  TableCellsIcon,
+  DocumentIcon,
+  PaperClipIcon,
+  EyeIcon,
+  XMarkIcon,
+  TrashIcon,
+  CheckCircleIcon,
+  PlusIcon,
+} from "@heroicons/react/24/outline";
+import Modal from "@/app/components/ui/Modal";
 
 const initialOnboardingSteps = [
   { label: "Household", description: "Add your property" },
@@ -40,6 +56,7 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [viewingFile, setViewingFile] = useState<UploadedFile | null>(null);
 
   // Detect if this is initial onboarding or adding a new household
   const isOnboarded = (session?.user as any)?.is_onboarded || false;
@@ -68,10 +85,20 @@ export default function OnboardingPage() {
   // Step 3: Uploaded files
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 
-  // Step 4: Extracted tenants
-  const [extractedTenants, setExtractedTenants] = useState<
-    (ExtractedTenantData & { id: string; isEditing?: boolean })[]
-  >([]);
+  // Step 3: Tenancy form data for review and confirmation
+  const [tenancyFormData, setTenancyFormData] = useState<{
+    [fileId: string]: {
+      tenancy_name: string;
+      start_date: string;
+      end_date: string;
+      monthly_rent: string;
+      deposit: string;
+    };
+  }>({});
+  const [confirmedTenancies, setConfirmedTenancies] = useState<Set<string>>(new Set());
+
+  // Step 4: Extracted tenants (renters)
+  const [extractedTenants, setExtractedTenants] = useState<ExtractedRenterWithId[]>([]);
   const [addedTenantIds, setAddedTenantIds] = useState<Set<string>>(new Set());
 
   // Initialize step based on onboarding status and restore saved progress
@@ -212,6 +239,7 @@ export default function OnboardingPage() {
       type: file.type,
       status: "uploading" as const,
       progress: 0,
+      url: URL.createObjectURL(file), // Create temporary URL for immediate preview
     }));
 
     setUploadedFiles((prev) => [...prev, ...newFiles]);
@@ -225,18 +253,37 @@ export default function OnboardingPage() {
           accessToken
         );
 
+        // Update file status and initialize form data if extraction completed
+        const fileStatus = agreement.status === 'processed' ? 'processed' : 'uploaded';
+
         setUploadedFiles((prev) =>
           prev.map((f) =>
             f.id === uploadedFile.id
               ? {
                   ...f,
-                  status: "uploaded" as const,
+                  status: fileStatus,
                   progress: 100,
                   agreementId: agreement.id,
+                  extractedData: agreement.extracted_data || undefined,
+                  url: agreement.file,
                 }
               : f
           )
         );
+
+        // Initialize form data if extraction completed
+        if (agreement.status === 'processed' && agreement.extracted_data) {
+          setTenancyFormData((prev) => ({
+            ...prev,
+            [uploadedFile.id]: {
+              tenancy_name: '',
+              start_date: agreement.extracted_data?.start_date || '',
+              end_date: agreement.extracted_data?.end_date || '',
+              monthly_rent: agreement.extracted_data?.monthly_rent?.toString() || '',
+              deposit: agreement.extracted_data?.deposit?.toString() || '',
+            },
+          }));
+        }
       } catch (err: any) {
         setUploadedFiles((prev) =>
           prev.map((f) =>
@@ -282,19 +329,13 @@ export default function OnboardingPage() {
         )
       );
 
-      // Add to extracted tenants if data was found
-      if (agreement.extracted_data) {
-        const hasData =
-          agreement.extracted_data.first_name ||
-          agreement.extracted_data.last_name ||
-          agreement.extracted_data.email;
-
-        if (hasData) {
-          setExtractedTenants((prev) => [
-            ...prev,
-            { ...agreement.extracted_data!, id: `tenant-${Date.now()}` },
-          ]);
-        }
+      // Add renters to extracted tenants if available
+      if (agreement.extracted_data?.renters && agreement.extracted_data.renters.length > 0) {
+        const newRenters = agreement.extracted_data.renters.map((renter, index) => ({
+          ...renter,
+          id: `renter-${agreement.id}-${index}`,
+        }));
+        setExtractedTenants((prev) => [...prev, ...newRenters]);
       }
     } catch (err: any) {
       setUploadedFiles((prev) =>
@@ -314,11 +355,88 @@ export default function OnboardingPage() {
   // Remove a file
   const handleRemoveFile = (fileId: string) => {
     setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
+    setTenancyFormData((prev) => {
+      const newData = { ...prev };
+      delete newData[fileId];
+      return newData;
+    });
   };
 
-  // Continue to step 4
-  const handleContinueToStep4 = () => {
-    setCurrentStep(4);
+  // Continue to step 4 - confirm all tenancies first
+  const handleContinueToStep4 = async () => {
+    setError(null);
+
+    // Get all processed files that have form data
+    const processedFiles = uploadedFiles.filter(
+      (file) => file.status === 'processed' && file.extractedData && tenancyFormData[file.id]
+    );
+
+    if (processedFiles.length === 0) {
+      setError("Please upload and process at least one tenancy agreement");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Confirm all tenancies
+      for (const file of processedFiles) {
+        if (!confirmedTenancies.has(file.id) && file.agreementId) {
+          const formData = tenancyFormData[file.id];
+
+          // Validate required fields
+          if (!formData.tenancy_name.trim()) {
+            setError(`Tenancy name is required for ${file.name}`);
+            setIsLoading(false);
+            return;
+          }
+          if (!formData.start_date) {
+            setError(`Start date is required for ${file.name}`);
+            setIsLoading(false);
+            return;
+          }
+          if (!formData.monthly_rent) {
+            setError(`Monthly rent is required for ${file.name}`);
+            setIsLoading(false);
+            return;
+          }
+
+          const confirmData: TenancyConfirmData = {
+            tenancy_agreement_id: file.agreementId,
+            tenancy_name: formData.tenancy_name.trim(),
+            start_date: formData.start_date,
+            end_date: formData.end_date || null,
+            monthly_rent: parseFloat(formData.monthly_rent),
+            deposit: parseFloat(formData.deposit) || 0,
+          };
+
+          await onboardingAPI.confirmTenancy(confirmData, accessToken);
+
+          // Mark as confirmed
+          setConfirmedTenancies((prev) => new Set([...prev, file.id]));
+
+          // Add renters to extracted tenants if available
+          if (file.extractedData?.renters && file.extractedData.renters.length > 0) {
+            const newTenants = file.extractedData.renters.map((renter, index) => ({
+              ...renter,
+              id: `tenant-${file.id}-${index}`,
+            }));
+            setExtractedTenants((prev) => [...prev, ...newTenants]);
+          }
+        }
+      }
+
+      // All confirmations successful, proceed to step 4
+      setCurrentStep(4);
+    } catch (err: any) {
+      setError(
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Failed to confirm tenancy. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Step 4: Add a tenant
@@ -382,6 +500,7 @@ export default function OnboardingPage() {
         last_name: "",
         email: "",
         phone_number: "",
+        is_primary: false,
         isEditing: true,
       },
     ]);
@@ -394,10 +513,44 @@ export default function OnboardingPage() {
 
   // Complete onboarding
   const handleCompleteOnboarding = async () => {
+    if (!createdHousehold) return;
+
     setError(null);
     setIsLoading(true);
 
     try {
+      // Add all tenants that haven't been added yet
+      const tenantsToAdd = extractedTenants.filter(
+        (tenant) => !addedTenantIds.has(tenant.id)
+      );
+
+      for (const tenant of tenantsToAdd) {
+        // Validate required fields
+        if (!tenant.first_name || !tenant.last_name || !tenant.email) {
+          setError(
+            `Please fill in all required fields for ${tenant.first_name || 'tenant'} ${tenant.last_name || ''}`
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        const tenantData: TenantData = {
+          first_name: tenant.first_name,
+          last_name: tenant.last_name,
+          email: tenant.email,
+          phone_number: tenant.phone_number || undefined,
+        };
+
+        await onboardingAPI.addTenant(
+          createdHousehold.id,
+          tenantData,
+          accessToken
+        );
+
+        // Mark as added
+        setAddedTenantIds((prev) => new Set([...prev, tenant.id]));
+      }
+
       // Only call complete onboarding API for first-time landlords
       if (!isOnboarded) {
         await onboardingAPI.completeOnboarding(accessToken);
@@ -411,6 +564,7 @@ export default function OnboardingPage() {
           },
         });
       }
+
       // Clear saved progress
       localStorage.removeItem('onboarding_progress');
       // Redirect to dashboard for both flows
@@ -463,23 +617,25 @@ export default function OnboardingPage() {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
-  const getFileIcon = (fileName: string): string => {
+  const getFileIcon = (fileName: string): React.ReactElement => {
     const extension = fileName.split(".").pop()?.toLowerCase();
+    const iconClass = "h-6 w-6 text-primary";
+
     switch (extension) {
       case "pdf":
-        return "📄";
+        return <DocumentTextIcon className={iconClass} />;
       case "jpg":
       case "jpeg":
       case "png":
-        return "🖼️";
+        return <PhotoIcon className={iconClass} />;
       case "xlsx":
       case "xls":
-        return "📊";
+        return <TableCellsIcon className={iconClass} />;
       case "doc":
       case "docx":
-        return "📝";
+        return <DocumentIcon className={iconClass} />;
       default:
-        return "📎";
+        return <PaperClipIcon className={iconClass} />;
     }
   };
 
@@ -750,7 +906,7 @@ export default function OnboardingPage() {
                     <Card key={file.id} padding="md" className="border border-border">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-3 flex-1">
-                          <span className="text-2xl">{getFileIcon(file.name)}</span>
+                          <div className="flex-shrink-0 mt-1">{getFileIcon(file.name)}</div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-text-primary truncate">
                               {file.name}
@@ -784,27 +940,123 @@ export default function OnboardingPage() {
                                 </div>
                               )}
                               {file.status === "processed" &&
-                                file.extractedData && (
-                                  <div className="bg-success/10 border border-success/20 rounded-lg p-3 mt-2">
-                                    <p className="text-sm font-medium text-success mb-2">
-                                      Tenant data extracted successfully
+                                file.extractedData &&
+                                tenancyFormData[file.id] && (
+                                  <div className="mt-3 space-y-4">
+                                    <p className="text-sm font-medium text-success mb-3">
+                                      ✓ Data extracted successfully
                                     </p>
-                                    <div className="text-sm text-text-secondary space-y-1">
-                                      {file.extractedData.first_name && (
-                                        <p>
-                                          Name: {file.extractedData.first_name}{" "}
-                                          {file.extractedData.last_name}
-                                        </p>
-                                      )}
-                                      {file.extractedData.email && (
-                                        <p>Email: {file.extractedData.email}</p>
-                                      )}
-                                      {file.extractedData.phone_number && (
-                                        <p>
-                                          Phone: {file.extractedData.phone_number}
-                                        </p>
-                                      )}
+
+                                    <Input
+                                      label="Tenancy Name *"
+                                      placeholder="e.g., 2024-2025 Lease"
+                                      value={tenancyFormData[file.id].tenancy_name}
+                                      onChange={(e) =>
+                                        setTenancyFormData((prev) => ({
+                                          ...prev,
+                                          [file.id]: {
+                                            ...prev[file.id],
+                                            tenancy_name: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                      required
+                                    />
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <Input
+                                        label="Start Date *"
+                                        type="date"
+                                        value={tenancyFormData[file.id].start_date}
+                                        onChange={(e) =>
+                                          setTenancyFormData((prev) => ({
+                                            ...prev,
+                                            [file.id]: {
+                                              ...prev[file.id],
+                                              start_date: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                        required
+                                      />
+                                      <Input
+                                        label="End Date"
+                                        type="date"
+                                        value={tenancyFormData[file.id].end_date}
+                                        onChange={(e) =>
+                                          setTenancyFormData((prev) => ({
+                                            ...prev,
+                                            [file.id]: {
+                                              ...prev[file.id],
+                                              end_date: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                      />
                                     </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <Input
+                                        label="Monthly Rent (€) *"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={tenancyFormData[file.id].monthly_rent}
+                                        onChange={(e) =>
+                                          setTenancyFormData((prev) => ({
+                                            ...prev,
+                                            [file.id]: {
+                                              ...prev[file.id],
+                                              monthly_rent: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                        required
+                                      />
+                                      <Input
+                                        label="Deposit (€)"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={tenancyFormData[file.id].deposit}
+                                        onChange={(e) =>
+                                          setTenancyFormData((prev) => ({
+                                            ...prev,
+                                            [file.id]: {
+                                              ...prev[file.id],
+                                              deposit: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                      />
+                                    </div>
+
+                                    {/* Renters preview */}
+                                    {file.extractedData.renters && file.extractedData.renters.length > 0 && (
+                                      <div className="mt-3 pt-3 border-t border-border">
+                                        <p className="text-sm font-medium text-text-primary mb-2">
+                                          Extracted Renters ({file.extractedData.renters.length}):
+                                        </p>
+                                        <div className="space-y-2">
+                                          {file.extractedData.renters.map((renter, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 text-sm text-text-secondary">
+                                              <span>
+                                                {renter.first_name || '?'} {renter.last_name || '?'}
+                                                {renter.email && ` (${renter.email})`}
+                                              </span>
+                                              {renter.is_primary && (
+                                                <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
+                                                  Primary
+                                                </span>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                        <p className="text-xs text-text-tertiary mt-2">
+                                          You can edit renter details in the next step
+                                        </p>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               {file.status === "failed" && (
@@ -816,25 +1068,27 @@ export default function OnboardingPage() {
                           </div>
                         </div>
 
-                        {/* Remove button */}
-                        <button
-                          onClick={() => handleRemoveFile(file.id)}
-                          className="text-text-tertiary hover:text-error transition-colors"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-2">
+                          {/* View button */}
+                          {file.url && (
+                            <button
+                              onClick={() => setViewingFile(file)}
+                              className="text-text-tertiary hover:text-primary transition-colors"
+                              title="View file"
+                            >
+                              <EyeIcon className="w-5 h-5" />
+                            </button>
+                          )}
+                          {/* Remove button */}
+                          <button
+                            onClick={() => handleRemoveFile(file.id)}
+                            className="text-text-tertiary hover:text-error transition-colors"
+                            title="Remove file"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
+                            <XMarkIcon className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
                     </Card>
                   ))}
@@ -845,7 +1099,12 @@ export default function OnboardingPage() {
                 <Button variant="secondary" onClick={handleBack} fullWidth>
                   Back
                 </Button>
-                <Button onClick={handleContinueToStep4} fullWidth size="lg">
+                <Button
+                  onClick={handleContinueToStep4}
+                  isLoading={isLoading}
+                  fullWidth
+                  size="lg"
+                >
                   Continue to Step 4
                 </Button>
               </div>
@@ -858,14 +1117,39 @@ export default function OnboardingPage() {
               title="Review Extracted Tenants"
               description="Verify and add tenants to your household"
             >
-              {extractedTenants.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-text-secondary mb-4">
-                    No tenants extracted yet. You can add them manually.
+              {/* Add Tenant Button - Top */}
+              <div className="flex justify-between items-center mb-6 pb-4 border-b border-border">
+                <div>
+                  <h3 className="text-lg font-medium text-text-primary">
+                    {extractedTenants.length > 0
+                      ? `${extractedTenants.length} Tenant${extractedTenants.length !== 1 ? 's' : ''} Found`
+                      : "No Tenants Yet"
+                    }
+                  </h3>
+                  <p className="text-sm text-text-secondary">
+                    {extractedTenants.length > 0
+                      ? "Review details and add to your household"
+                      : "Add your first tenant to continue"
+                    }
                   </p>
-                  <Button variant="secondary" onClick={handleAddManualTenant}>
-                    Add Tenant Manually
-                  </Button>
+                </div>
+                <Button onClick={handleAddManualTenant} variant="secondary">
+                  <PlusIcon className="h-5 w-5 mr-2" />
+                  Add Tenant Manually
+                </Button>
+              </div>
+
+              {extractedTenants.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                    <PlusIcon className="w-8 h-8 text-primary" />
+                  </div>
+                  <p className="text-text-secondary mb-4">
+                    No tenants extracted from agreements.
+                  </p>
+                  <p className="text-sm text-text-tertiary">
+                    Click "Add Tenant Manually" above to get started.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -873,9 +1157,27 @@ export default function OnboardingPage() {
                     <Card
                       key={tenant.id}
                       padding="md"
-                      className="border border-border"
+                      className="border border-border relative"
                     >
-                      <div className="space-y-4">
+                      {/* Trash button - top right */}
+                      <button
+                        onClick={() => handleRemoveTenant(tenant.id)}
+                        className="absolute top-4 right-4 p-2 rounded-lg hover:bg-error/10 transition-colors group"
+                        title="Remove tenant from list"
+                      >
+                        <TrashIcon className="h-5 w-5 text-text-tertiary group-hover:text-error transition-colors" />
+                      </button>
+
+                      <div className="space-y-4 pr-12">
+                        {/* Show primary badge if applicable */}
+                        {(tenant as any).is_primary && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
+                              Primary Renter
+                            </span>
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <Input
                             label="First Name"
@@ -927,51 +1229,9 @@ export default function OnboardingPage() {
                             )
                           }
                         />
-                        <div className="flex gap-3">
-                          {addedTenantIds.has(tenant.id) ? (
-                            <div className="flex items-center gap-2 text-success flex-1">
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                              <span className="font-medium">Tenant Added</span>
-                            </div>
-                          ) : (
-                            <Button
-                              onClick={() => handleAddTenant(tenant.id)}
-                              isLoading={isLoading}
-                              fullWidth
-                            >
-                              Add Tenant
-                            </Button>
-                          )}
-                          <Button
-                            variant="danger"
-                            onClick={() => handleRemoveTenant(tenant.id)}
-                          >
-                            Remove
-                          </Button>
-                        </div>
                       </div>
                     </Card>
                   ))}
-
-                  <Button
-                    variant="secondary"
-                    onClick={handleAddManualTenant}
-                    fullWidth
-                  >
-                    Add Another Tenant Manually
-                  </Button>
                 </div>
               )}
 
@@ -982,10 +1242,16 @@ export default function OnboardingPage() {
                 <Button
                   onClick={handleCompleteOnboarding}
                   isLoading={isLoading}
+                  disabled={extractedTenants.length === 0}
                   fullWidth
                   size="lg"
                 >
-                  Complete Onboarding
+                  {extractedTenants.length === 0
+                    ? "Add Tenants to Continue"
+                    : isOnboarded
+                    ? "Complete & Add Tenants"
+                    : "Complete Onboarding"
+                  }
                 </Button>
               </div>
             </FormSection>
@@ -1041,6 +1307,123 @@ export default function OnboardingPage() {
               </div>
             </Card>
           </div>
+        )}
+
+        {/* File Viewer Modal */}
+        {viewingFile && (
+          <Modal
+            isOpen={true}
+            onClose={() => setViewingFile(null)}
+            maxWidth="2xl"
+            showCloseButton={false}
+          >
+            <div className="relative -m-6">
+              {/* Floating close button */}
+              <button
+                onClick={() => setViewingFile(null)}
+                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-colors"
+                aria-label="Close"
+              >
+                <XMarkIcon className="h-5 w-5 text-gray-600" />
+              </button>
+
+              {/* File preview */}
+              <div className="bg-background-secondary overflow-hidden rounded-2xl">
+                {viewingFile.url ? (
+                  <>
+                    {/* PDF Preview */}
+                    {viewingFile.name.toLowerCase().endsWith('.pdf') && (
+                      <iframe
+                        src={viewingFile.url}
+                        className="w-full h-[80vh] rounded-2xl"
+                        title={viewingFile.name}
+                      />
+                    )}
+
+                    {/* Image Preview */}
+                    {(viewingFile.name.toLowerCase().endsWith('.jpg') ||
+                      viewingFile.name.toLowerCase().endsWith('.jpeg') ||
+                      viewingFile.name.toLowerCase().endsWith('.png')) && (
+                      <div className="flex items-center justify-center h-[80vh] rounded-2xl">
+                        <img
+                          src={viewingFile.url}
+                          alt={viewingFile.name}
+                          className="max-w-full max-h-full object-contain rounded-2xl"
+                        />
+                      </div>
+                    )}
+
+                    {/* Word Document & Other Office files - Download with preview info */}
+                    {(viewingFile.name.toLowerCase().endsWith('.doc') ||
+                      viewingFile.name.toLowerCase().endsWith('.docx') ||
+                      viewingFile.name.toLowerCase().endsWith('.xls') ||
+                      viewingFile.name.toLowerCase().endsWith('.xlsx')) && (
+                        <div className="p-8 text-center h-[80vh] flex flex-col items-center justify-center rounded-2xl">
+                          <DocumentIcon className="h-16 w-16 text-primary mx-auto mb-4" />
+                          <h3 className="text-xl font-semibold text-text-primary mb-2">
+                            {viewingFile.name}
+                          </h3>
+                          <p className="text-text-secondary mb-2">
+                            {formatFileSize(viewingFile.size)}
+                          </p>
+                          <p className="text-text-secondary mb-6 max-w-md">
+                            Office documents cannot be previewed in the browser.
+                            Click below to download and open in Microsoft Word or Excel.
+                          </p>
+                          <div className="flex gap-3">
+                            <a
+                              href={viewingFile.url}
+                              download
+                              className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors bg-primary text-white hover:bg-primary-dark min-w-[150px]"
+                            >
+                              Download File
+                            </a>
+                            <a
+                              href={viewingFile.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors bg-secondary text-white hover:bg-secondary-dark"
+                            >
+                              Open in New Tab
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                    {/* Other file types - show download link */}
+                    {!viewingFile.name.toLowerCase().endsWith('.pdf') &&
+                      !viewingFile.name.toLowerCase().endsWith('.jpg') &&
+                      !viewingFile.name.toLowerCase().endsWith('.jpeg') &&
+                      !viewingFile.name.toLowerCase().endsWith('.png') &&
+                      !viewingFile.name.toLowerCase().endsWith('.doc') &&
+                      !viewingFile.name.toLowerCase().endsWith('.docx') &&
+                      !viewingFile.name.toLowerCase().endsWith('.xls') &&
+                      !viewingFile.name.toLowerCase().endsWith('.xlsx') && (
+                        <div className="p-8 text-center h-[80vh] flex flex-col items-center justify-center rounded-2xl">
+                          <DocumentIcon className="h-16 w-16 text-text-tertiary mx-auto mb-4" />
+                          <p className="text-text-secondary mb-4">
+                            Preview not available for this file type
+                          </p>
+                          <a
+                            href={viewingFile.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors bg-primary text-white hover:bg-primary-dark"
+                          >
+                            Download File
+                          </a>
+                        </div>
+                      )}
+                  </>
+                ) : (
+                  <div className="p-8 text-center h-[80vh] flex flex-col items-center justify-center rounded-2xl">
+                    <LoadingSpinner size="lg" />
+                    <p className="mt-4 text-text-secondary">Loading file...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Modal>
         )}
       </div>
     </div>

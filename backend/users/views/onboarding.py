@@ -10,12 +10,13 @@ from django.db import transaction
 from django.utils import timezone
 from pydantic import ValidationError as PydanticValidationError
 
-from ..models import User, Household, HouseholdMembership, TenancyAgreement
+from ..models import User, Household, HouseholdMembership, TenancyAgreement, Tenancy, Renter
 from ..serializers import (
     HouseholdSerializer,
     TenancyAgreementSerializer,
     UserSerializer,
 )
+from ..emails import send_welcome_email
 from ..schemas import (
     HouseholdOnboardingSchema,
     LandlordUpdateSchema,
@@ -149,11 +150,23 @@ class OnboardingViewSet(viewsets.ViewSet):
             upload_data = TenancyUploadSchema(household_id=request.data.get('household_id'))
 
             # Get household and verify ownership
-            household = get_object_or_404(
-                Household,
-                id=upload_data.household_id,
-                landlord=request.user
-            )
+            try:
+                household = Household.objects.get(
+                    id=upload_data.household_id,
+                    landlord=request.user
+                )
+            except Household.DoesNotExist:
+                # Check if household exists at all
+                if Household.objects.filter(id=upload_data.household_id).exists():
+                    return Response(
+                        {'error': 'You do not have permission to upload files for this household'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                else:
+                    return Response(
+                        {'error': f'Household with ID {upload_data.household_id} not found'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
 
             # Validate file
             if 'file' not in request.FILES:
@@ -294,7 +307,10 @@ class OnboardingViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'], url_path='tenancy/confirm')
     def confirm_tenancy(self, request):
         """
-        Confirm and create tenancy from extracted data
+        Confirm and create/update tenancy from extracted data (idempotent)
+
+        If a tenancy already exists for this tenancy agreement, it will be updated.
+        Otherwise, a new tenancy will be created.
 
         POST /api/users/onboarding/tenancy/confirm/
         {
@@ -305,6 +321,8 @@ class OnboardingViewSet(viewsets.ViewSet):
             "monthly_rent": 1500.00,
             "deposit": 3000.00
         }
+
+        Returns: Tenancy object (HTTP 200 for both create and update)
         """
         try:
             # Validate with Pydantic
@@ -318,37 +336,42 @@ class OnboardingViewSet(viewsets.ViewSet):
                 status='processed'
             )
 
-            # Check if tenancy already exists for this household with same dates
+            # Check if tenancy already exists for this tenancy agreement
             from ..models import Tenancy
             existing_tenancy = Tenancy.objects.filter(
-                household=tenancy_agreement.household,
-                start_date=confirm_data.start_date
+                proof_document=tenancy_agreement.file
             ).first()
 
             if existing_tenancy:
-                return Response(
-                    {'error': 'Tenancy with same start date already exists for this household'},
-                    status=status.HTTP_400_BAD_REQUEST
+                # UPDATE existing tenancy
+                existing_tenancy.name = confirm_data.tenancy_name
+                existing_tenancy.start_date = confirm_data.start_date
+                existing_tenancy.end_date = confirm_data.end_date
+                existing_tenancy.monthly_rent = confirm_data.monthly_rent
+                existing_tenancy.deposit = confirm_data.deposit
+                existing_tenancy.status = 'active' if confirm_data.start_date <= timezone.now().date() else 'future'
+                existing_tenancy.save()
+
+                logger.info(f"Updated existing tenancy {existing_tenancy.id} for household {existing_tenancy.household.id}")
+                tenancy = existing_tenancy
+            else:
+                # CREATE new tenancy
+                tenancy = Tenancy.objects.create(
+                    household=tenancy_agreement.household,
+                    name=confirm_data.tenancy_name,
+                    start_date=confirm_data.start_date,
+                    end_date=confirm_data.end_date,
+                    monthly_rent=confirm_data.monthly_rent,
+                    deposit=confirm_data.deposit,
+                    status='active' if confirm_data.start_date <= timezone.now().date() else 'future',
+                    proof_document=tenancy_agreement.file  # Link the proof document
                 )
-
-            # Create the Tenancy record
-            tenancy = Tenancy.objects.create(
-                household=tenancy_agreement.household,
-                name=confirm_data.tenancy_name,
-                start_date=confirm_data.start_date,
-                end_date=confirm_data.end_date,
-                monthly_rent=confirm_data.monthly_rent,
-                deposit=confirm_data.deposit,
-                status='active' if confirm_data.start_date <= timezone.now().date() else 'future',
-                proof_document=tenancy_agreement.file  # Link the proof document
-            )
-
-            logger.info(f"Created tenancy {tenancy.id} for household {tenancy.household.id}")
+                logger.info(f"Created new tenancy {tenancy.id} for household {tenancy.household.id}")
 
             # Return tenancy data
             from ..serializers import TenancySerializer
             serializer = TenancySerializer(tenancy)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         except PydanticValidationError as e:
             return Response(
@@ -387,6 +410,10 @@ class OnboardingViewSet(viewsets.ViewSet):
                 landlord=request.user
             )
 
+            # Track if this is a new user to send welcome email
+            is_new_user = False
+            temporary_password = None
+
             with transaction.atomic():
                 # Check if user already exists
                 try:
@@ -399,9 +426,12 @@ class OnboardingViewSet(viewsets.ViewSet):
                     tenant.save()
                 except User.DoesNotExist:
                     # Create new tenant user
+                    is_new_user = True
+                    temporary_password = User.objects.make_random_password(length=16)
+
                     tenant = User.objects.create_user(
                         email=tenant_data.email,
-                        password=User.objects.make_random_password(length=16),
+                        password=temporary_password,
                         first_name=tenant_data.first_name,
                         last_name=tenant_data.last_name,
                         phone_number=tenant_data.phone_number,
@@ -427,6 +457,11 @@ class OnboardingViewSet(viewsets.ViewSet):
                     request.user.onboarding_step = 3
                     request.user.save(update_fields=['onboarding_step'])
 
+            # Send welcome email to new tenants (outside transaction)
+            if is_new_user and temporary_password:
+                landlord_name = request.user.get_full_name() or request.user.email
+                send_welcome_email(tenant, temporary_password, landlord_name)
+
             tenant_serializer = UserSerializer(tenant)
             return Response(tenant_serializer.data, status=status.HTTP_201_CREATED)
 
@@ -448,11 +483,22 @@ class OnboardingViewSet(viewsets.ViewSet):
         Mark onboarding as complete
 
         POST /api/users/onboarding/complete/
+
+        Minimum requirements:
+        - Has at least one household
+        - Has at least one tenancy OR household members (for backward compatibility)
         """
         try:
             # Check if all required steps are completed
             has_household = Household.objects.filter(landlord=request.user).exists()
-            has_tenants = HouseholdMembership.objects.filter(
+
+            # Check for tenancies (new system)
+            has_tenancy = Tenancy.objects.filter(
+                household__landlord=request.user
+            ).exists()
+
+            # Check for household memberships (legacy system - backward compatibility)
+            has_household_members = HouseholdMembership.objects.filter(
                 household__landlord=request.user,
                 is_active=True
             ).exists()
@@ -463,9 +509,10 @@ class OnboardingViewSet(viewsets.ViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            if not has_tenants:
+            # Must have either a tenancy (new system) or household members (legacy)
+            if not has_tenancy and not has_household_members:
                 return Response(
-                    {'error': 'Please add at least one tenant'},
+                    {'error': 'Please create a tenancy agreement or add household members'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -473,6 +520,8 @@ class OnboardingViewSet(viewsets.ViewSet):
             request.user.is_onboarded = True
             request.user.onboarding_step = 4
             request.user.save(update_fields=['is_onboarded', 'onboarding_step'])
+
+            logger.info(f"User {request.user.email} completed onboarding successfully")
 
             serializer = UserSerializer(request.user)
             return Response(serializer.data, status=status.HTTP_200_OK)
