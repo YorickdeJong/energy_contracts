@@ -121,15 +121,8 @@ def multiple_users(db):
     return users
 
 
-@pytest.fixture(autouse=True)
-def enable_db_access_for_all_tests(db):
-    """
-    Automatically enable database access for all tests.
-
-    This fixture is autouse=True, so it runs for every test.
-    You can remove this if you prefer to explicitly mark tests with @pytest.mark.django_db
-    """
-    pass
+# Removed autouse database fixture - tests should explicitly use @pytest.mark.django_db
+# or request the 'db' fixture when they need database access
 
 
 @pytest.fixture
