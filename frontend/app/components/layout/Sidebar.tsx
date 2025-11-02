@@ -109,21 +109,21 @@ export default function Sidebar() {
         })}
 
         {/* Toggle Button */}
-        <div className="pt-4">
+        <div className={`pt-4 ${!isCollapsed && "flex justify-end pr-3"}`}>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`
-              flex items-center justify-center w-full rounded-xl
+            className="
+              flex items-center justify-center
+              h-10 w-10 rounded-full
               bg-primary text-white shadow-md
-              transition-all duration-200 hover:bg-primary-dark
-              ${isCollapsed ? "h-12 w-12 mx-auto" : "h-12"}
-            `}
+              transition-all duration-200 hover:bg-primary-dark hover:scale-110
+            "
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isCollapsed ? (
-              <ChevronRightIcon className="h-6 w-6" />
+              <ChevronRightIcon className="h-5 w-5" />
             ) : (
-              <ChevronLeftIcon className="h-6 w-6" />
+              <ChevronLeftIcon className="h-5 w-5" />
             )}
           </button>
         </div>
