@@ -2,6 +2,8 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 from django.utils import timezone
 from django.core.validators import RegexValidator
+import secrets
+from datetime import timedelta
 
 
 class UserManager(BaseUserManager):
@@ -220,3 +222,55 @@ class TenancyAgreement(models.Model):
 
     def __str__(self):
         return f"Tenancy Agreement for {self.household.name} - {self.status}"
+
+
+class TenantInvitation(models.Model):
+    """Invitation for a tenant to join a household"""
+
+    email = models.EmailField(db_index=True)
+    household = models.ForeignKey(
+        Household,
+        on_delete=models.CASCADE,
+        related_name='invitations'
+    )
+    invited_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='sent_invitations'
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'tenant invitation'
+        verbose_name_plural = 'tenant invitations'
+        unique_together = [['email', 'household']]  # One invitation per email per household
+
+    def save(self, *args, **kwargs):
+        # Auto-generate token if not set
+        if not self.token:
+            self.token = secrets.token_urlsafe(32)
+
+        # Auto-set expiration if not set (7 days from now)
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(days=7)
+
+        super().save(*args, **kwargs)
+
+    def is_valid(self):
+        """Check if invitation is still valid"""
+        return (
+            self.accepted_at is None and
+            timezone.now() < self.expires_at
+        )
+
+    def accept(self):
+        """Mark invitation as accepted"""
+        self.accepted_at = timezone.now()
+        self.save()
+
+    def __str__(self):
+        return f"Invitation to {self.email} for {self.household.name}"

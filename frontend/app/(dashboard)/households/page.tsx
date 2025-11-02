@@ -11,6 +11,8 @@ import { BuildingOfficeIcon, PlusIcon, UsersIcon } from "@heroicons/react/24/out
 export default function HouseholdsPage() {
   const router = useRouter();
   const { data: session } = useSession();
+  const user = (session?.user as any);
+  const userRole = user?.role || 'tenant';
   const [households, setHouseholds] = useState<Household[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -69,19 +71,23 @@ export default function HouseholdsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-semibold text-text-primary">
-            My Households
+            {userRole === 'tenant' ? 'My Household' : 'My Households'}
           </h1>
           <p className="mt-2 text-text-secondary">
-            Manage your properties and tenants
+            {userRole === 'tenant'
+              ? 'View your household details and members'
+              : 'Manage your properties and tenants'}
           </p>
         </div>
-        <Button
-          onClick={() => setIsCreateModalOpen(true)}
-          variant="primary"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          New Household
-        </Button>
+        {(userRole === 'landlord' || userRole === 'admin') && (
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            variant="primary"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            New Household
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -94,10 +100,14 @@ export default function HouseholdsPage() {
         <Card className="p-12">
           <EmptyState
             icon={BuildingOfficeIcon}
-            title="No households yet"
-            description="Get started by creating your first household to manage tenants and energy contracts."
-            actionLabel="Create Household"
-            onAction={() => setIsCreateModalOpen(true)}
+            title={userRole === 'tenant' ? "No household yet" : "No households yet"}
+            description={
+              userRole === 'tenant'
+                ? "You haven't been added to a household yet. Please contact your landlord."
+                : "Get started by creating your first household to manage tenants and energy contracts."
+            }
+            actionLabel={userRole === 'tenant' ? undefined : "Create Household"}
+            onAction={userRole === 'tenant' ? undefined : () => setIsCreateModalOpen(true)}
           />
         </Card>
       ) : (
@@ -133,11 +143,13 @@ export default function HouseholdsPage() {
         </div>
       )}
 
-      <CreateHouseholdModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateHousehold}
-      />
+      {(userRole === 'landlord' || userRole === 'admin') && (
+        <CreateHouseholdModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSubmit={handleCreateHousehold}
+        />
+      )}
     </div>
   );
 }

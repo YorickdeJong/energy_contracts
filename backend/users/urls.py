@@ -7,6 +7,7 @@ from .views import (
     RefreshTokenView,
     CurrentUserView,
     HouseholdViewSet,
+    InvitationViewSet,
 )
 
 app_name = 'users'
@@ -14,13 +15,14 @@ app_name = 'users'
 # Create router for ViewSets
 router = DefaultRouter()
 
-# Register HouseholdViewSet
+# Register ViewSets
 router.register(r'households', HouseholdViewSet, basename='household')
+router.register(r'invitations', InvitationViewSet, basename='invitation')
 
 # Try to import and register OnboardingViewSet if available
 try:
     from .views import OnboardingViewSet
-    router.register(r'onboarding/tenancy', OnboardingViewSet, basename='onboarding-tenancy')
+    router.register(r'onboarding', OnboardingViewSet, basename='onboarding')
 except ImportError:
     pass  # OnboardingViewSet not available (missing dependencies)
 

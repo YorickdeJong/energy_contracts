@@ -1,0 +1,19 @@
+You've Been Invited to Join {{ household_name }}
+
+Hi there,
+
+{{ landlord_name }} has invited you to join the household "{{ household_name }}" on Energy Contracts Manager.
+
+What is Energy Contracts Manager?
+A platform to manage your household's energy contracts and monitor usage, all in one place.
+
+Accept your invitation by visiting this link:
+{{ invitation_url }}
+
+This invitation expires in 7 days.
+
+---
+
+If you didn't expect this invitation, you can safely ignore this email.
+
+© 2025 Energy Contracts Manager. All rights reserved.

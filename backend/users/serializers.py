@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
-from .models import User, Household, HouseholdMembership, TenancyAgreement
+from .models import User, Household, HouseholdMembership, TenancyAgreement, TenantInvitation
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -157,3 +157,56 @@ class TenancyAgreementSerializer(serializers.ModelSerializer):
             'status',
         )
         read_only_fields = ('id', 'uploaded_at', 'extracted_data', 'status')
+
+
+class TenantInvitationSerializer(serializers.ModelSerializer):
+    """Serializer for TenantInvitation model."""
+    household_name = serializers.CharField(source='household.name', read_only=True)
+    invited_by_name = serializers.CharField(source='invited_by.get_full_name', read_only=True)
+    is_valid = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TenantInvitation
+        fields = (
+            'id',
+            'email',
+            'household',
+            'household_name',
+            'invited_by',
+            'invited_by_name',
+            'token',
+            'created_at',
+            'expires_at',
+            'accepted_at',
+            'is_valid',
+        )
+        read_only_fields = ('id', 'token', 'created_at', 'expires_at', 'accepted_at')
+
+    def get_is_valid(self, obj):
+        return obj.is_valid()
+
+
+class InvitationAcceptSerializer(serializers.Serializer):
+    """Serializer for accepting an invitation."""
+    token = serializers.CharField(required=True)
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        validators=[validate_password],
+        style={'input_type': 'password'}
+    )
+    password_confirm = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'}
+    )
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
+    phone_number = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError({
+                'password': 'Password fields did not match.'
+            })
+        return attrs

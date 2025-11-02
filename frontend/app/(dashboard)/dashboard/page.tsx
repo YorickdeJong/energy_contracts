@@ -104,7 +104,7 @@ export default function DashboardPage() {
     <div className="min-h-screen">
       {/* Header */}
       <div className="">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto ">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-semibold text-text-primary">
@@ -165,7 +165,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Tenants Table */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto pt-8">
         <Card>
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
