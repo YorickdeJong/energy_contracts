@@ -25,11 +25,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
     const baseStyles =
-      "appearance-none px-3 py-2 border rounded-lg text-base text-text-primary placeholder-text-tertiary transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed";
+      "appearance-none px-5 py-4 text-lg text-text-primary placeholder-text-tertiary bg-background-secondary transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-primary/20 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed";
 
     const stateStyles = error
-      ? "border-error focus:border-error focus:ring-error"
-      : "border-border focus:border-primary focus:ring-primary";
+      ? "focus:ring-error/20"
+      : "";
 
     const widthStyles = fullWidth ? "w-full" : "";
 
@@ -40,7 +40,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-text-primary mb-1.5"
+            className="block text-base font-medium text-text-primary mb-2"
           >
             {label}
           </label>

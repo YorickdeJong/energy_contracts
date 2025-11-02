@@ -77,6 +77,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
 
+    # Onboarding fields
+    is_onboarded = models.BooleanField(default=False)
+    onboarding_step = models.IntegerField(default=0)  # 0-4 tracking progress
+
     # Timestamps
     date_joined = models.DateTimeField(default=timezone.now)
     last_login = models.DateTimeField(null=True, blank=True)
@@ -176,3 +180,43 @@ class HouseholdMembership(models.Model):
 
     def __str__(self):
         return f"{self.tenant.email} in {self.household.name}"
+
+
+class TenancyAgreement(models.Model):
+    """Tenancy agreement file with AI-extracted tenant data"""
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('processed', 'Processed'),
+        ('failed', 'Failed'),
+    ]
+
+    household = models.ForeignKey(
+        Household,
+        on_delete=models.CASCADE,
+        related_name='tenancy_agreements'
+    )
+    tenant = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tenancy_agreements'
+    )
+    file = models.FileField(upload_to='tenancy_agreements/%Y/%m/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    extracted_data = models.JSONField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+
+    class Meta:
+        ordering = ['-uploaded_at']
+        verbose_name = 'tenancy agreement'
+        verbose_name_plural = 'tenancy agreements'
+
+    def __str__(self):
+        return f"Tenancy Agreement for {self.household.name} - {self.status}"

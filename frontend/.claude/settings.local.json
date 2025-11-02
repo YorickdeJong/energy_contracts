@@ -14,7 +14,10 @@
       "Bash(psql:*)",
       "Bash(PGPASSWORD=postgres psql:*)",
       "Bash(brew services:*)",
-      "Bash(docker-compose up:*)"
+      "Bash(docker-compose up:*)",
+      "Bash(createdb:*)",
+      "Bash(python manage.py:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

@@ -5,9 +5,11 @@ export interface User {
   last_name: string;
   phone_number: string | null;
   profile_picture: string | null;
-  role: 'admin' | 'manager' | 'user';
+  role: 'admin' | 'landlord' | 'tenant' | 'user';
   is_active: boolean;
   is_verified: boolean;
+  is_onboarded: boolean;
+  onboarding_step: number;
   date_joined: string;
 }
 
