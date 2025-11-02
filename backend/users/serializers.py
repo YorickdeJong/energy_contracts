@@ -40,6 +40,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         required=True,
         style={'input_type': 'password'}
     )
+    role = serializers.ChoiceField(
+        choices=['landlord', 'tenant'],
+        required=False,
+        default='tenant'
+    )
 
     class Meta:
         model = User
@@ -50,6 +55,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'phone_number',
+            'role',
         )
 
     def validate(self, attrs):

@@ -17,7 +17,7 @@ export default function DashboardLayout({
         <Header />
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto px-12 py-6 bg-blue-50/20">
+        <main className="flex-1 overflow-y-auto px-12 py-6 bg-gray-50/70">
           {children}
         </main>
       </div>

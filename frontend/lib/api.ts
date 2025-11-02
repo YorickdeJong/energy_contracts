@@ -9,6 +9,8 @@ import type {
   ExtractedTenantData,
   TenantData,
 } from '@/types/onboarding';
+import type { AnalyticsResponse } from '@/types/analytics';
+import type { TasksResponse, Task, CreateTaskData, UpdateTaskData, TaskFilters } from '@/types/tasks';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -265,6 +267,67 @@ export const onboardingAPI = {
         },
       }
     );
+  },
+};
+
+// Analytics API functions
+export const analyticsAPI = {
+  async getAnalytics(accessToken: string, period: 'week' | 'month' | 'year' = 'month'): Promise<AnalyticsResponse> {
+    const response = await api.get<AnalyticsResponse>('/api/analytics/', {
+      params: { period },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+};
+
+// Tasks API functions
+export const tasksAPI = {
+  async list(accessToken: string, filters?: TaskFilters): Promise<TasksResponse> {
+    const response = await api.get<TasksResponse>('/api/tasks/', {
+      params: filters,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async get(id: number, accessToken: string): Promise<Task> {
+    const response = await api.get<Task>(`/api/tasks/${id}/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async create(data: CreateTaskData, accessToken: string): Promise<Task> {
+    const response = await api.post<Task>('/api/tasks/', data, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async update(id: number, data: UpdateTaskData, accessToken: string): Promise<Task> {
+    const response = await api.patch<Task>(`/api/tasks/${id}/`, data, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async delete(id: number, accessToken: string): Promise<void> {
+    await api.delete(`/api/tasks/${id}/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
   },
 };
 

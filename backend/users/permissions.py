@@ -6,10 +6,11 @@ class IsLandlordOrAdmin(permissions.BasePermission):
     Permission to only allow landlords or admins to access.
     """
     def has_permission(self, request, view):
+        user = request.user
         return (
-            request.user and
-            request.user.is_authenticated and
-            (request.user.role in ['landlord', 'admin'] or request.user.is_superuser)
+            user and
+            user.is_authenticated and
+            (user.role in ['landlord', 'admin'] or user.is_superuser)
         )
 
 

@@ -45,10 +45,8 @@ export default auth((req) => {
       return NextResponse.redirect(new URL("/onboarding", req.url));
     }
 
-    // If landlord is onboarded, don't allow access to onboarding
-    if (!needsOnboarding && isOnboardingPage) {
-      return NextResponse.redirect(new URL("/", req.url));
-    }
+    // Allow onboarded landlords to access onboarding to add more households
+    // (No redirect needed - they can freely access /onboarding)
   }
 
   // Non-landlords shouldn't access onboarding

@@ -17,11 +17,12 @@ export default function RegisterPage() {
     first_name: "",
     last_name: "",
     phone_number: "",
+    role: "landlord", // Default to landlord for onboarding flow
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -167,6 +168,22 @@ export default function RegisterPage() {
             onChange={handleChange}
             placeholder="your@email.com"
           />
+          <div>
+            <label htmlFor="role" className="block text-sm font-medium text-text-primary mb-2">
+              I am a *
+            </label>
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+            >
+              <option value="landlord">Landlord / Property Manager</option>
+              <option value="tenant">Tenant</option>
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="First name"

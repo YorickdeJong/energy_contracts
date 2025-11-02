@@ -23,19 +23,39 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const navigation: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
-  { name: "Households", href: "/households", icon: BuildingOfficeIcon },
-  { name: "Smart Meters", href: "/smart-meters", icon: BoltIcon },
-  { name: "Analytics", href: "/analytics", icon: ChartBarIcon },
-  { name: "Tasks", href: "/tasks", icon: CheckCircleIcon },
-];
-
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
   const user = session?.user as any;
+  const userRole = user?.role || 'tenant';
+
+  // Filter navigation based on user role
+  const getNavigationForRole = (role: string): NavItem[] => {
+    const baseNav: NavItem[] = [
+      { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
+    ];
+
+    if (role === 'tenant') {
+      // Tenants see: Dashboard, My Household, Smart Meters
+      return [
+        ...baseNav,
+        { name: "My Household", href: "/households", icon: BuildingOfficeIcon },
+        { name: "Smart Meters", href: "/smart-meters", icon: BoltIcon },
+      ];
+    }
+
+    // Landlords and admins see all navigation items
+    return [
+      ...baseNav,
+      { name: "Households", href: "/households", icon: BuildingOfficeIcon },
+      { name: "Smart Meters", href: "/smart-meters", icon: BoltIcon },
+      { name: "Analytics", href: "/analytics", icon: ChartBarIcon },
+      { name: "Tasks", href: "/tasks", icon: CheckCircleIcon },
+    ];
+  };
+
+  const navigation = getNavigationForRole(userRole);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
@@ -57,9 +77,9 @@ export default function Sidebar() {
       `}
     >
       {/* Logo/Branding */}
-      <div className="flex h-16 items-center justify-center border-b border-border px-4">
+      <div className={`flex py-6 ${isCollapsed ? 'justify-center' : 'px-3'} items-center  border-b border-border `}>
         <Link href="/dashboard" className="flex items-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white font-bold text-lg shadow-sm">
+          <div className="flex h-10 w-14 items-center justify-center rounded-xl bg-primary text-white font-bold text-lg shadow-sm">
             {isCollapsed ? "E" : "EC"}
           </div>
           {!isCollapsed && (
@@ -71,7 +91,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-6 space-y-2">
+      <nav className="flex-1 px-3 py-8 space-y-6">
         {navigation.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
@@ -109,7 +129,7 @@ export default function Sidebar() {
         })}
 
         {/* Toggle Button */}
-        <div className={`pt-4 ${!isCollapsed && "flex justify-end pr-3"}`}>
+        <div className={`pt-4 ml-2 ${!isCollapsed && "flex justify-end "}`}>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="

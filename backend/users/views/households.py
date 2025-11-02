@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from ..models import Household, HouseholdMembership, User
 from ..serializers import HouseholdSerializer, HouseholdMembershipSerializer, UserSerializer
 from ..permissions import IsLandlordOrAdmin, IsHouseholdLandlord
@@ -11,14 +12,38 @@ from ..permissions import IsLandlordOrAdmin, IsHouseholdLandlord
 class HouseholdViewSet(viewsets.ModelViewSet):
     """ViewSet for managing households."""
     serializer_class = HouseholdSerializer
-    permission_classes = [IsAuthenticated, IsLandlordOrAdmin]
+
+    def get_permissions(self):
+        """
+        Custom permissions:
+        - Tenants can list and retrieve households they're members of
+        - Only landlords can create, update, delete households
+        """
+        if self.action in ['list', 'retrieve', 'members']:
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsLandlordOrAdmin()]
 
     def get_queryset(self):
-        """Return households owned by the current user."""
+        """
+        Return households based on user role:
+        - Admins: all households
+        - Landlords: households they own
+        - Tenants: households they're members of
+        """
         user = self.request.user
+
         if user.is_admin():
             return Household.objects.all()
-        return Household.objects.filter(landlord=user)
+
+        if user.is_landlord():
+            # Landlords see households they own
+            return Household.objects.filter(landlord=user)
+
+        # Tenants see households they're members of
+        return Household.objects.filter(
+            memberships__tenant=user,
+            memberships__is_active=True
+        ).distinct()
 
     def perform_create(self, serializer):
         """Set the landlord to the current user when creating a household."""

@@ -20,19 +20,29 @@ import type {
 } from "@/types/onboarding";
 import type { Household } from "@/types/household";
 
-const steps = [
+const initialOnboardingSteps = [
   { label: "Household", description: "Add your property" },
   { label: "Landlord", description: "Your details" },
   { label: "Tenancies", description: "Upload agreements" },
   { label: "Tenants", description: "Review & add" },
 ];
 
+const addHouseholdSteps = [
+  { label: "Property", description: "Add household details" },
+  { label: "Tenancies", description: "Upload agreements" },
+  { label: "Tenants", description: "Review & add" },
+];
+
 export default function OnboardingPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0); // 0 = intro card for existing landlords
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Detect if this is initial onboarding or adding a new household
+  const isOnboarded = (session?.user as any)?.is_onboarded || false;
+  const steps = isOnboarded ? addHouseholdSteps : initialOnboardingSteps;
 
   // Step 1: Household data
   const [householdData, setHouseholdData] = useState<HouseholdOnboardingData>({
@@ -62,9 +72,13 @@ export default function OnboardingPage() {
   >([]);
   const [addedTenantIds, setAddedTenantIds] = useState<Set<string>>(new Set());
 
-  // Initialize landlord data from session
+  // Initialize step based on onboarding status
   useEffect(() => {
     if (session?.user) {
+      const isOnboarded = (session.user as any).is_onboarded || false;
+      // Start at intro card (step 0) for existing landlords, step 1 for new landlords
+      setCurrentStep(isOnboarded ? 0 : 1);
+
       setLandlordData({
         first_name: (session.user as any).first_name || "",
         last_name: (session.user as any).last_name || "",
@@ -330,8 +344,21 @@ export default function OnboardingPage() {
     setIsLoading(true);
 
     try {
-      await onboardingAPI.completeOnboarding(accessToken);
-      router.push("/households");
+      // Only call complete onboarding API for first-time landlords
+      if (!isOnboarded) {
+        await onboardingAPI.completeOnboarding(accessToken);
+        // Update the session to reflect is_onboarded = true
+        await update({
+          ...session,
+          user: {
+            ...(session?.user as any),
+            is_onboarded: true,
+            onboarding_step: 4,
+          },
+        });
+      }
+      // Redirect to dashboard for both flows
+      router.push("/dashboard");
     } catch (err: any) {
       setError(
         err.response?.data?.message || "Failed to complete onboarding. Please try again."
@@ -345,6 +372,10 @@ export default function OnboardingPage() {
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      setError(null);
+    } else if (isOnboarded && currentStep === 1) {
+      // For existing landlords, go back to intro card
+      setCurrentStep(0);
       setError(null);
     }
   };
@@ -377,21 +408,54 @@ export default function OnboardingPage() {
     }
   };
 
+  // Get actual step number for display (skip intro card)
+  const actualStep = isOnboarded && currentStep === 0 ? 0 : currentStep;
+
   return (
-    <div className="min-h-screen bg-background-secondary py-8 px-4">
+    <div className="min-h-screen bg-gray-50/70 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-semibold text-text-primary mb-2">
-            Welcome! Let's get you set up
+            {isOnboarded ? "Add New Household" : "Welcome! Let's get you set up"}
           </h1>
           <p className="text-lg text-text-secondary">
-            We'll guide you through adding your first household and tenants
+            {isOnboarded
+              ? "Add another property to your portfolio"
+              : "We'll guide you through adding your first household and tenants"}
           </p>
         </div>
 
-        {/* Stepper */}
-        <Stepper steps={steps} currentStep={currentStep} />
+        {/* Intro Card for Existing Landlords */}
+        {isOnboarded && currentStep === 0 && (
+          <Card className="mb-6 text-center" padding="lg">
+            <div className="py-8">
+              <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-semibold text-text-primary mb-2">
+                Ready to add another household?
+              </h2>
+              <p className="text-text-secondary mb-6">
+                You currently manage {(session?.user as any)?.household_count || 0} household(s).
+                Let's add another property with its tenants.
+              </p>
+              <Button
+                onClick={() => setCurrentStep(1)}
+                size="lg"
+              >
+                Get Started
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Stepper - only show when not on intro card */}
+        {!(isOnboarded && currentStep === 0) && (
+          <Stepper steps={steps} currentStep={isOnboarded ? currentStep : currentStep} />
+        )}
 
         {/* Error message */}
         {error && (
@@ -495,13 +559,13 @@ export default function OnboardingPage() {
                 fullWidth
                 size="lg"
               >
-                Continue to Step 2
+                {isOnboarded ? "Continue" : "Continue to Step 2"}
               </Button>
             </FormSection>
           )}
 
-          {/* Step 2: Landlord Information */}
-          {currentStep === 2 && (
+          {/* Step 2: Landlord Information - Only for first-time onboarding */}
+          {!isOnboarded && currentStep === 2 && (
             <FormSection
               title="Your Details"
               description="Confirm your contact information"
@@ -568,8 +632,8 @@ export default function OnboardingPage() {
             </FormSection>
           )}
 
-          {/* Step 3: Upload Tenancy Agreements */}
-          {currentStep === 3 && (
+          {/* Step 3 (or 2 for existing landlords): Upload Tenancy Agreements */}
+          {((!isOnboarded && currentStep === 3) || (isOnboarded && currentStep === 2)) && (
             <FormSection
               title="Upload Tenancy Agreements"
               description="We'll extract tenant details automatically using AI"
@@ -692,8 +756,8 @@ export default function OnboardingPage() {
             </FormSection>
           )}
 
-          {/* Step 4: Review & Add Tenants */}
-          {currentStep === 4 && (
+          {/* Step 4 (or 3 for existing landlords): Review & Add Tenants */}
+          {((!isOnboarded && currentStep === 4) || (isOnboarded && currentStep === 3)) && (
             <FormSection
               title="Review Extracted Tenants"
               description="Verify and add tenants to your household"

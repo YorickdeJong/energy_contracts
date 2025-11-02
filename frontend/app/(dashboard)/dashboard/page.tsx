@@ -29,6 +29,8 @@ interface TenantRow {
 export default function DashboardPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const user = (session?.user as any);
+  const userRole = user?.role || 'tenant';
   const [households, setHouseholds] = useState<Household[]>([]);
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +48,7 @@ export default function DashboardPage() {
       setError("");
 
       const accessToken = (session as any)?.accessToken;
+
       if (!accessToken) {
         setError("No access token found. Please log in again.");
         return;
@@ -108,16 +111,20 @@ export default function DashboardPage() {
                 Welcome back, {session?.user?.first_name || "User"}!
               </h1>
               <p className="mt-2 text-lg text-text-secondary">
-                Manage your properties and tenants
+                {userRole === 'tenant'
+                  ? "View your household and energy usage"
+                  : "Manage your properties and tenants"}
               </p>
             </div>
-            <Button
-              onClick={handleAddHousehold}
-              className="flex items-center space-x-2"
-            >
-              <PlusIcon className="w-5 h-5" />
-              <span>Add New Household</span>
-            </Button>
+            {(userRole === 'landlord' || userRole === 'admin') && (
+              <Button
+                onClick={handleAddHousehold}
+                className="flex items-center space-x-2"
+              >
+                <PlusIcon className="w-5 h-5" />
+                <span>Add New Household</span>
+              </Button>
+            )}
           </div>
 
           {/* Statistics Cards */}
@@ -128,7 +135,9 @@ export default function DashboardPage() {
                   <BuildingOfficeIcon className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-text-secondary">Total Households</p>
+                  <p className="text-sm text-text-secondary">
+                    {userRole === 'tenant' ? 'Your Household' : 'Total Households'}
+                  </p>
                   <p className="text-3xl font-semibold text-text-primary">
                     {households.length}
                   </p>
@@ -142,7 +151,9 @@ export default function DashboardPage() {
                   <UserGroupIcon className="w-8 h-8 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-text-secondary">Total Tenants</p>
+                  <p className="text-sm text-text-secondary">
+                    {userRole === 'tenant' ? 'Household Members' : 'Total Tenants'}
+                  </p>
                   <p className="text-3xl font-semibold text-text-primary">
                     {tenants.length}
                   </p>
@@ -160,14 +171,18 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-semibold text-text-primary">
-                  All Tenants
+                  {userRole === 'tenant' ? 'Household Members' : 'All Tenants'}
                 </h2>
                 <p className="mt-1 text-sm text-text-secondary">
-                  View and manage all tenants across your properties
+                  {userRole === 'tenant'
+                    ? 'View all members of your household'
+                    : 'View and manage all tenants across your properties'}
                 </p>
               </div>
               <Link href="/households">
-                <Button variant="secondary">View All Households</Button>
+                <Button variant="secondary">
+                  {userRole === 'tenant' ? 'View Household' : 'View All Households'}
+                </Button>
               </Link>
             </div>
           </div>
@@ -182,10 +197,14 @@ export default function DashboardPage() {
             <div className="p-12">
               <EmptyState
                 icon={UserGroupIcon}
-                title="No tenants yet"
-                description="Add your first household to start managing tenants"
-                actionLabel="Add Your First Household"
-                onAction={handleAddHousehold}
+                title={userRole === 'tenant' ? "No household yet" : "No tenants yet"}
+                description={
+                  userRole === 'tenant'
+                    ? "You haven't been added to a household yet. Please contact your landlord."
+                    : "Add your first household to start managing tenants"
+                }
+                actionLabel={userRole === 'tenant' ? undefined : "Add Your First Household"}
+                onAction={userRole === 'tenant' ? undefined : handleAddHousehold}
               />
             </div>
           ) : (
@@ -202,15 +221,19 @@ export default function DashboardPage() {
                     <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
                       Phone
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
-                      Household
-                    </th>
+                    {(userRole === 'landlord' || userRole === 'admin') && (
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
+                        Household
+                      </th>
+                    )}
                     <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
-                      Actions
-                    </th>
+                    {(userRole === 'landlord' || userRole === 'admin') && (
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -242,13 +265,15 @@ export default function DashboardPage() {
                           {tenant.phone_number || "—"}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
-                        <Link href={`/households/${tenant.household_id}`}>
-                          <span className="text-sm text-primary hover:text-primary-dark hover:underline cursor-pointer">
-                            {tenant.household_name}
-                          </span>
-                        </Link>
-                      </td>
+                      {(userRole === 'landlord' || userRole === 'admin') && (
+                        <td className="px-6 py-4">
+                          <Link href={`/households/${tenant.household_id}`}>
+                            <span className="text-sm text-primary hover:text-primary-dark hover:underline cursor-pointer">
+                              {tenant.household_name}
+                            </span>
+                          </Link>
+                        </td>
+                      )}
                       <td className="px-6 py-4">
                         <Badge
                           variant={tenant.is_active ? "success" : "secondary"}
@@ -256,13 +281,15 @@ export default function DashboardPage() {
                           {tenant.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4">
-                        <Link href={`/households/${tenant.household_id}`}>
-                          <Button variant="secondary" size="sm">
-                            View Details
-                          </Button>
-                        </Link>
-                      </td>
+                      {(userRole === 'landlord' || userRole === 'admin') && (
+                        <td className="px-6 py-4">
+                          <Link href={`/households/${tenant.household_id}`}>
+                            <Button variant="secondary" size="sm">
+                              View Details
+                            </Button>
+                          </Link>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -276,30 +303,34 @@ export default function DashboardPage() {
           <Card className="p-6">
             <BuildingOfficeIcon className="w-8 h-8 text-primary mb-4" />
             <h3 className="text-xl font-semibold text-text-primary mb-2">
-              Manage Households
+              {userRole === 'tenant' ? 'My Household' : 'Manage Households'}
             </h3>
             <p className="text-sm text-text-secondary mb-4">
-              View all your properties and manage household details
+              {userRole === 'tenant'
+                ? 'View your household details and information'
+                : 'View all your properties and manage household details'}
             </p>
             <Link href="/households">
               <Button variant="secondary" fullWidth>
-                Go to Households
+                {userRole === 'tenant' ? 'View My Household' : 'Go to Households'}
               </Button>
             </Link>
           </Card>
 
-          <Card className="p-6">
-            <UserGroupIcon className="w-8 h-8 text-green-600 mb-4" />
-            <h3 className="text-xl font-semibold text-text-primary mb-2">
-              Add New Household
-            </h3>
-            <p className="text-sm text-text-secondary mb-4">
-              Set up a new property and add tenants with AI-powered extraction
-            </p>
-            <Button onClick={handleAddHousehold} fullWidth>
-              Start Onboarding
-            </Button>
-          </Card>
+          {(userRole === 'landlord' || userRole === 'admin') && (
+            <Card className="p-6">
+              <UserGroupIcon className="w-8 h-8 text-green-600 mb-4" />
+              <h3 className="text-xl font-semibold text-text-primary mb-2">
+                Add New Household
+              </h3>
+              <p className="text-sm text-text-secondary mb-4">
+                Set up a new property and add tenants with AI-powered extraction
+              </p>
+              <Button onClick={handleAddHousehold} fullWidth>
+                Start Onboarding
+              </Button>
+            </Card>
+          )}
         </div>
       </div>
     </div>
