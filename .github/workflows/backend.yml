@@ -61,12 +61,14 @@ jobs:
 
       - name: Run migrations
         env:
+          # CI testing environment - uses default test credentials
+          # Production secrets should be stored in GitHub Secrets
           DATABASE_NAME: energy_contracts_test
           DATABASE_USER: postgres
           DATABASE_PASSWORD: postgres
           DATABASE_HOST: localhost
           DATABASE_PORT: 5432
-          SECRET_KEY: test-secret-key-for-ci
+          SECRET_KEY: test-secret-key-for-ci-only-not-for-production
           DEBUG: True
         run: python manage.py migrate
 
@@ -77,7 +79,7 @@ jobs:
           DATABASE_PASSWORD: postgres
           DATABASE_HOST: localhost
           DATABASE_PORT: 5432
-          SECRET_KEY: test-secret-key-for-ci
+          SECRET_KEY: test-secret-key-for-ci-only-not-for-production
           DEBUG: True
         run: |
           python manage.py test || echo "No tests found yet"
