@@ -23,7 +23,7 @@ interface NavItem {
 }
 
 const navigation: NavItem[] = [
-  { name: "Dashboard", href: "/households", icon: HomeIcon },
+  { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
   { name: "Households", href: "/households", icon: BuildingOfficeIcon },
   { name: "Smart Meters", href: "/smart-meters", icon: BoltIcon },
   { name: "Analytics", href: "/analytics", icon: ChartBarIcon },
@@ -37,7 +37,7 @@ export default function Sidebar() {
   const user = session?.user as any;
 
   const isActive = (href: string) => {
-    if (href === "/households") {
+    if (href === "/dashboard") {
       return pathname === href || pathname === "/";
     }
     return pathname?.startsWith(href);
@@ -57,7 +57,7 @@ export default function Sidebar() {
     >
       {/* Logo/Branding */}
       <div className="flex h-16 items-center justify-center border-b border-border px-4">
-        <Link href="/households" className="flex items-center">
+        <Link href="/dashboard" className="flex items-center">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white font-bold text-lg shadow-sm">
             {isCollapsed ? "E" : "EC"}
           </div>
