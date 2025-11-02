@@ -48,6 +48,7 @@ class LandlordUpdateSchema(BaseModel):
     """Schema for updating landlord information"""
     first_name: Optional[str] = Field(None, max_length=150)
     last_name: Optional[str] = Field(None, max_length=150)
+    email: Optional[EmailStr] = None
     phone_number: Optional[str] = Field(None, pattern=r'^\+?1?\d{9,15}$')
 
     @field_validator('first_name', 'last_name')

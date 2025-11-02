@@ -90,6 +90,7 @@ class OnboardingViewSet(viewsets.ViewSet):
         {
             "first_name": "John",
             "last_name": "Doe",
+            "email": "landlord@example.com",
             "phone_number": "+31612345678"
         }
         """
@@ -102,6 +103,8 @@ class OnboardingViewSet(viewsets.ViewSet):
                 request.user.first_name = landlord_data.first_name
             if landlord_data.last_name is not None:
                 request.user.last_name = landlord_data.last_name
+            if landlord_data.email is not None:
+                request.user.email = landlord_data.email
             if landlord_data.phone_number is not None:
                 request.user.phone_number = landlord_data.phone_number
 

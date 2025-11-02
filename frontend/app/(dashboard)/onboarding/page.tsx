@@ -74,12 +74,44 @@ export default function OnboardingPage() {
   >([]);
   const [addedTenantIds, setAddedTenantIds] = useState<Set<string>>(new Set());
 
-  // Initialize step based on onboarding status
+  // Initialize step based on onboarding status and restore saved progress
   useEffect(() => {
     if (session?.user) {
       const isOnboarded = (session.user as any).is_onboarded || false;
-      // Start at intro card (step 0) for existing landlords, step 1 for new landlords
-      setCurrentStep(isOnboarded ? 0 : 1);
+
+      // Try to restore saved progress from localStorage
+      const savedProgress = localStorage.getItem('onboarding_progress');
+      if (savedProgress) {
+        try {
+          const progress = JSON.parse(savedProgress);
+
+          // Restore household if it was created
+          if (progress.household) {
+            setCreatedHousehold(progress.household);
+            setHouseholdData(progress.householdData || {
+              name: "",
+              street_address: "",
+              city: "",
+              postal_code: "",
+              country: "",
+            });
+          }
+
+          // Restore current step
+          if (progress.currentStep) {
+            setCurrentStep(progress.currentStep);
+          } else {
+            // Default step based on onboarding status
+            setCurrentStep(isOnboarded ? 0 : 1);
+          }
+        } catch (e) {
+          console.error('Failed to restore onboarding progress:', e);
+          setCurrentStep(isOnboarded ? 0 : 1);
+        }
+      } else {
+        // No saved progress - start fresh
+        setCurrentStep(isOnboarded ? 0 : 1);
+      }
 
       setLandlordData({
         first_name: (session.user as any).first_name || "",
@@ -89,6 +121,19 @@ export default function OnboardingPage() {
       });
     }
   }, [session]);
+
+  // Auto-save progress whenever household or step changes
+  useEffect(() => {
+    if (createdHousehold || currentStep > 1) {
+      const progress = {
+        household: createdHousehold,
+        householdData,
+        currentStep,
+        timestamp: new Date().toISOString(),
+      };
+      localStorage.setItem('onboarding_progress', JSON.stringify(progress));
+    }
+  }, [createdHousehold, currentStep, householdData]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -360,6 +405,8 @@ export default function OnboardingPage() {
           },
         });
       }
+      // Clear saved progress
+      localStorage.removeItem('onboarding_progress');
       // Redirect to dashboard for both flows
       router.push("/dashboard");
     } catch (err: any) {
@@ -396,6 +443,9 @@ export default function OnboardingPage() {
 
   // Confirm cancel (discard and go to dashboard)
   const handleConfirmCancel = () => {
+    // Clear all saved progress
+    localStorage.removeItem('onboarding_progress');
+    setShowCancelModal(false);
     router.push("/dashboard");
   };
 
