@@ -1,25 +1,106 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Card, Button, Input, Badge } from "@/app/components/ui";
-import { UserIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { UserIcon, ShieldCheckIcon, CheckCircleIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
+import { authAPI } from "@/lib/api";
 
 export default function ProfilePage() {
   const { data: session, update } = useSession();
   const user = session?.user as any;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     first_name: user?.first_name || "",
     last_name: user?.last_name || "",
     phone_number: user?.phone_number || "",
+    profile_picture: user?.profile_picture || "",
   });
+
+  // Update form data when user session changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+        phone_number: user.phone_number || "",
+        profile_picture: user.profile_picture || "",
+      });
+    }
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement profile update API call
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const accessToken = (session as any)?.accessToken;
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      // Call API to update profile
+      const updatedUser = await authAPI.updateProfile(accessToken, formData);
+
+      // Update the session with new user data
+      await update({
+        ...session,
+        user: {
+          ...session?.user,
+          ...updatedUser,
+        },
+      });
+
+      setSuccess("Profile updated successfully!");
+      setIsEditing(false);
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error("Profile update error:", err);
+      setError(
+        err.response?.data?.detail ||
+        err.response?.data?.phone_number?.[0] ||
+        "Failed to update profile. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    // Reset form data to current user values
+    setFormData({
+      first_name: user?.first_name || "",
+      last_name: user?.last_name || "",
+      phone_number: user?.phone_number || "",
+      profile_picture: user?.profile_picture || "",
+    });
+    setError(null);
     setIsEditing(false);
+  };
+
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'error' as const;
+      case 'landlord':
+        return 'warning' as const;
+      case 'tenant':
+        return 'primary' as const;
+      default:
+        return 'secondary' as const;
+    }
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
   return (
@@ -32,6 +113,22 @@ export default function ProfilePage() {
           Manage your account information and preferences
         </p>
       </div>
+
+      {/* Success Message */}
+      {success && (
+        <div className="bg-success/10 border border-success/20 rounded-lg p-4 flex items-center">
+          <CheckCircleIcon className="h-5 w-5 text-success mr-3 flex-shrink-0" />
+          <p className="text-success text-sm">{success}</p>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-error/10 border border-error/20 rounded-lg p-4 flex items-center">
+          <ExclamationCircleIcon className="h-5 w-5 text-error mr-3 flex-shrink-0" />
+          <p className="text-error text-sm">{error}</p>
+        </div>
+      )}
 
       {/* Profile Information Card */}
       <Card className="p-6">
@@ -55,13 +152,15 @@ export default function ProfilePage() {
               label="First Name"
               value={formData.first_name}
               onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-              disabled={!isEditing}
+              disabled={!isEditing || isLoading}
+              required
             />
             <Input
               label="Last Name"
               value={formData.last_name}
               onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-              disabled={!isEditing}
+              disabled={!isEditing || isLoading}
+              required
             />
           </div>
 
@@ -69,23 +168,28 @@ export default function ProfilePage() {
             label="Email"
             value={user?.email || ""}
             disabled
+            helperText="Email address cannot be changed"
           />
 
           <Input
             label="Phone Number"
             value={formData.phone_number}
             onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-            disabled={!isEditing}
+            disabled={!isEditing || isLoading}
             placeholder="+31612345678"
+            helperText="Format: +31612345678"
           />
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
               Account Role
             </label>
-            <Badge variant="primary" className="capitalize">
-              {user?.role || "User"}
+            <Badge variant={getRoleBadgeVariant(user?.role || 'user')}>
+              {getRoleDisplayName(user?.role || 'user')}
             </Badge>
+            <p className="text-xs text-text-secondary mt-1">
+              Your role determines your access level in the system
+            </p>
           </div>
 
           {isEditing && (
@@ -93,12 +197,13 @@ export default function ProfilePage() {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => setIsEditing(false)}
+                onClick={handleCancel}
+                disabled={isLoading}
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary">
-                Save Changes
+              <Button type="submit" variant="primary" disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           )}

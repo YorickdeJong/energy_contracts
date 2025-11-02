@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
-from .models import User
+from .models import User, Household, HouseholdMembership, TenancyAgreement
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -21,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
             'is_verified',
             'date_joined',
         )
-        read_only_fields = ('id', 'date_joined', 'is_verified')
+        read_only_fields = ('id', 'email', 'role', 'is_active', 'is_verified', 'date_joined')
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -88,3 +88,64 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['user'] = UserSerializer(self.user).data
 
         return data
+
+
+class HouseholdSerializer(serializers.ModelSerializer):
+    """Serializer for Household model."""
+    member_count = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Household
+        fields = (
+            'id',
+            'name',
+            'address',
+            'landlord',
+            'created_at',
+            'updated_at',
+            'is_active',
+            'member_count',
+        )
+        read_only_fields = ('id', 'landlord', 'created_at', 'updated_at')
+
+
+class HouseholdMembershipSerializer(serializers.ModelSerializer):
+    """Serializer for HouseholdMembership model."""
+    tenant_email = serializers.EmailField(source='tenant.email', read_only=True)
+    tenant_name = serializers.CharField(source='tenant.get_full_name', read_only=True)
+
+    class Meta:
+        model = HouseholdMembership
+        fields = (
+            'id',
+            'household',
+            'tenant',
+            'tenant_email',
+            'tenant_name',
+            'role',
+            'joined_at',
+            'invited_by',
+            'is_active',
+        )
+        read_only_fields = ('id', 'joined_at')
+
+
+class TenancyAgreementSerializer(serializers.ModelSerializer):
+    """Serializer for TenancyAgreement model."""
+    tenant_email = serializers.EmailField(source='tenant.email', read_only=True, allow_null=True)
+    household_name = serializers.CharField(source='household.name', read_only=True)
+
+    class Meta:
+        model = TenancyAgreement
+        fields = (
+            'id',
+            'household',
+            'household_name',
+            'tenant',
+            'tenant_email',
+            'file',
+            'uploaded_at',
+            'extracted_data',
+            'status',
+        )
+        read_only_fields = ('id', 'uploaded_at', 'extracted_data', 'status')

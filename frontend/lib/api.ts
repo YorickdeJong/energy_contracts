@@ -1,6 +1,14 @@
 import axios from 'axios';
 import type { LoginCredentials, RegisterData, LoginResponse, RegisterResponse, User } from '@/types/auth';
 import type { Household, CreateHouseholdData, UpdateHouseholdData } from '@/types/household';
+import type {
+  OnboardingStatus,
+  HouseholdOnboardingData,
+  LandlordUpdateData,
+  TenancyAgreement,
+  ExtractedTenantData,
+  TenantData,
+} from '@/types/onboarding';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -45,6 +53,15 @@ export const authAPI = {
     await api.post('/api/users/logout/', {
       refresh: refreshToken,
     });
+  },
+
+  async updateProfile(accessToken: string, data: Partial<User>): Promise<User> {
+    const response = await api.patch<User>('/api/users/me/', data, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
   },
 };
 
@@ -92,4 +109,150 @@ export const householdsAPI = {
     const response = await api.delete(`/api/users/households/${householdId}/members/${userId}/`);
     return response.data;
   },
+};
+
+// Onboarding API functions
+export const onboardingAPI = {
+  async getStatus(accessToken: string): Promise<OnboardingStatus> {
+    const response = await api.get<OnboardingStatus>('/api/users/onboarding/status/', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async createHousehold(data: HouseholdOnboardingData, accessToken: string): Promise<Household> {
+    const response = await api.post<Household>(
+      '/api/users/onboarding/household/',
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async updateLandlord(data: LandlordUpdateData, accessToken: string): Promise<User> {
+    const response = await api.patch<User>(
+      '/api/users/onboarding/landlord/',
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async uploadTenancyAgreement(
+    householdId: number,
+    file: File,
+    accessToken: string
+  ): Promise<TenancyAgreement> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('household', householdId.toString());
+
+    const response = await api.post<TenancyAgreement>(
+      '/api/users/onboarding/tenancy-agreements/',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async processTenancyAgreement(
+    agreementId: number,
+    accessToken: string
+  ): Promise<TenancyAgreement> {
+    const response = await api.post<TenancyAgreement>(
+      `/api/users/onboarding/tenancy-agreements/${agreementId}/process/`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async getTenancyAgreement(
+    agreementId: number,
+    accessToken: string
+  ): Promise<TenancyAgreement> {
+    const response = await api.get<TenancyAgreement>(
+      `/api/users/onboarding/tenancy-agreements/${agreementId}/`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async addTenant(
+    householdId: number,
+    data: TenantData,
+    accessToken: string
+  ): Promise<User> {
+    const response = await api.post<User>(
+      `/api/users/onboarding/households/${householdId}/tenants/`,
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async completeOnboarding(accessToken: string): Promise<void> {
+    await api.post(
+      '/api/users/onboarding/complete/',
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  },
+};
+
+// Helper function for file uploads
+export const uploadFile = async (
+  file: File,
+  endpoint: string,
+  accessToken: string,
+  additionalData?: Record<string, string>
+): Promise<any> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  if (additionalData) {
+    Object.entries(additionalData).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+  }
+
+  const response = await api.post(endpoint, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  return response.data;
 };
