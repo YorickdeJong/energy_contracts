@@ -1,5 +1,7 @@
-from pydantic import BaseModel, EmailStr, field_validator, Field
-from typing import Optional
+from pydantic import BaseModel, EmailStr, field_validator, Field, model_validator
+from typing import Optional, List
+from datetime import date
+from decimal import Decimal
 
 
 class HouseholdOnboardingSchema(BaseModel):
@@ -117,3 +119,174 @@ class OnboardingStatusSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class InvitationVerifySchema(BaseModel):
+    """Schema for verifying an invitation token"""
+    token: str = Field(..., min_length=1, max_length=64)
+
+    @field_validator('token')
+    def validate_token(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Token cannot be empty')
+        return v.strip()
+
+
+class InvitationAcceptSchema(BaseModel):
+    """Schema for accepting an invitation"""
+    token: str = Field(..., min_length=1, max_length=64)
+    password: str = Field(..., min_length=8, max_length=128)
+    password_confirm: str = Field(..., min_length=8, max_length=128)
+    first_name: Optional[str] = Field(None, max_length=150)
+    last_name: Optional[str] = Field(None, max_length=150)
+    phone_number: Optional[str] = Field(None, pattern=r'^\+?1?\d{9,15}$')
+
+    @field_validator('token')
+    def validate_token(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Token cannot be empty')
+        return v.strip()
+
+    @field_validator('password', 'password_confirm')
+    def validate_password(cls, v):
+        if not v or len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
+        return v
+
+    @field_validator('first_name', 'last_name')
+    def validate_names(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError('Name cannot be empty if provided')
+        return v.strip() if v else None
+
+    @field_validator('phone_number')
+    def validate_phone_number(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError('Phone number cannot be empty if provided')
+        return v.strip() if v else None
+
+    def validate_passwords_match(self):
+        """Validate that passwords match"""
+        if self.password != self.password_confirm:
+            raise ValueError('Passwords do not match')
+
+
+class InvitationCreateSchema(BaseModel):
+    """Schema for creating a tenant invitation"""
+    email: EmailStr
+    household_id: int = Field(..., gt=0)
+
+    @field_validator('household_id')
+    def validate_household_id(cls, v):
+        if v <= 0:
+            raise ValueError('Invalid household ID')
+        return v
+
+
+class InvitationResponseSchema(BaseModel):
+    """Schema for invitation response data"""
+    id: int
+    email: str
+    household: int
+    household_name: str
+    invited_by: int
+    invited_by_name: str
+    token: str
+    created_at: str
+    expires_at: str
+    accepted_at: Optional[str] = None
+    is_valid: bool
+
+    class Config:
+        from_attributes = True
+
+
+# ==================== Tenancy Schemas ====================
+
+class RenterSchema(BaseModel):
+    """Schema for adding a renter to a tenancy"""
+    email: EmailStr
+    first_name: Optional[str] = Field(None, max_length=150)
+    last_name: Optional[str] = Field(None, max_length=150)
+    is_primary: bool = False
+
+    @field_validator('first_name', 'last_name')
+    def validate_names(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError('Name cannot be empty if provided')
+        return v.strip() if v else None
+
+
+class TenancyCreateSchema(BaseModel):
+    """Schema for creating a new tenancy"""
+    household_id: int = Field(..., gt=0)
+    start_date: date
+    end_date: Optional[date] = None
+    monthly_rent: Decimal = Field(default=Decimal('0.00'), ge=0)
+    deposit: Decimal = Field(default=Decimal('0.00'), ge=0)
+    status: str = Field(default='future')
+    # Optional: Add renters during creation
+    renters: Optional[List[RenterSchema]] = None
+
+    @field_validator('status')
+    def validate_status(cls, v):
+        valid_statuses = ['future', 'active', 'moving_out', 'moved_out']
+        if v not in valid_statuses:
+            raise ValueError(f'Status must be one of: {", ".join(valid_statuses)}')
+        return v
+
+    @model_validator(mode='after')
+    def validate_dates(self):
+        """Validate that end_date is after start_date"""
+        if self.end_date and self.start_date and self.end_date <= self.start_date:
+            raise ValueError('End date must be after start date')
+        return self
+
+
+class TenancyUpdateSchema(BaseModel):
+    """Schema for updating a tenancy"""
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    monthly_rent: Optional[Decimal] = Field(None, ge=0)
+    deposit: Optional[Decimal] = Field(None, ge=0)
+    status: Optional[str] = None
+
+    @field_validator('status')
+    def validate_status(cls, v):
+        if v is not None:
+            valid_statuses = ['future', 'active', 'moving_out', 'moved_out']
+            if v not in valid_statuses:
+                raise ValueError(f'Status must be one of: {", ".join(valid_statuses)}')
+        return v
+
+    @model_validator(mode='after')
+    def validate_dates(self):
+        """Validate that end_date is after start_date if both provided"""
+        if self.end_date and self.start_date and self.end_date <= self.start_date:
+            raise ValueError('End date must be after start date')
+        return self
+
+
+class AddRenterSchema(BaseModel):
+    """Schema for adding a renter to an existing tenancy"""
+    email: EmailStr
+    first_name: Optional[str] = Field(None, max_length=150)
+    last_name: Optional[str] = Field(None, max_length=150)
+    is_primary: bool = False
+
+    @field_validator('first_name', 'last_name')
+    def validate_names(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError('Name cannot be empty if provided')
+        return v.strip() if v else None
+
+
+class StartMoveoutSchema(BaseModel):
+    """Schema for starting the move-out process"""
+    end_date: date
+
+    @field_validator('end_date')
+    def validate_end_date(cls, v):
+        if v < date.today():
+            raise ValueError('End date cannot be in the past')
+        return v
