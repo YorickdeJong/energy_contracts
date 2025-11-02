@@ -2,10 +2,11 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@8.6.12",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node start-server.js",
     "build": "next build",
-    "start": "next start",
+    "start": "node start-server.js",
     "lint": "eslint"
   },
   "dependencies": {
