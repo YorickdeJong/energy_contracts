@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Avatar from "../ui/Avatar";
 import { UserCircleIcon, ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
+import { authAPI } from "@/lib/api";
 
 export default function UserProfileDropdown() {
   const { data: session } = useSession();
@@ -33,7 +34,22 @@ export default function UserProfileDropdown() {
   }, [isOpen]);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/login" });
+    try {
+      // Get access and refresh tokens from session
+      const accessToken = (session as any)?.accessToken;
+      const refreshToken = (session as any)?.refreshToken;
+
+      if (accessToken && refreshToken) {
+        // Call backend to blacklist the refresh token
+        await authAPI.logout(accessToken, refreshToken);
+      }
+    } catch (error) {
+      // Log error but continue with logout
+      console.error("Error during logout:", error);
+    } finally {
+      // Clear session and redirect to login
+      await signOut({ callbackUrl: "/login" });
+    }
   };
 
   if (!user) {

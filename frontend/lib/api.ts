@@ -49,10 +49,15 @@ export const authAPI = {
     return response.data;
   },
 
-  async logout(refreshToken: string): Promise<void> {
-    await api.post('/api/users/logout/', {
-      refresh: refreshToken,
-    });
+  async logout(accessToken: string, refreshToken: string): Promise<void> {
+    await api.post('/api/users/logout/',
+      { refresh: refreshToken },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
   },
 
   async updateProfile(accessToken: string, data: Partial<User>): Promise<User> {
