@@ -187,7 +187,14 @@ docker-compose exec backend pytest --cov=. --cov-report=html
 
 **Django Project Structure:**
 - `config/` - Django project settings and root URL configuration
+- `project/` - Project-wide settings, constants, utilities, and exceptions
+  - `settings/` - Pydantic-based settings management (base, dev, prod, test)
+  - `constants.py` - Project-wide constants and enumerations
+  - `utils.py` - Shared utility functions
+  - `exceptions.py` - Custom exception classes
 - `users/` - Custom user authentication app with email-based auth
+- `pytest.ini` - Pytest configuration
+- `conftest.py` - Shared pytest fixtures
 - Uses PostgreSQL with custom User model (email as username)
 
 **Key Backend Components:**
@@ -215,6 +222,15 @@ docker-compose exec backend pytest --cov=. --cov-report=html
    - WhiteNoise for static file serving
    - Static files: `/static/` → `staticfiles/`
    - Media files: `/media/` → `media/`
+
+5. **Project Configuration** (`project/`):
+   - Pydantic-based settings in `project/settings/`
+   - Base settings with environment-specific overrides (dev, prod, test)
+   - Type-safe settings with validation
+   - Constants and enumerations in `project/constants.py`
+   - Utility functions in `project/utils.py`
+   - Custom exceptions in `project/exceptions.py`
+   - See `backend/project/README.md` for detailed usage
 
 ### Frontend Architecture
 
@@ -321,7 +337,12 @@ GitHub Actions workflows in `.github/workflows/`:
 - Organize tests in `tests/` directories within each app
 - Run: `pytest` (local) or `docker-compose exec backend pytest` (Docker)
 - Coverage: `pytest --cov=. --cov-report=html`
-- Configuration: Create `pytest.ini` or `pyproject.toml` for pytest settings
+- Configuration: `pytest.ini` configured at project root
+- Shared fixtures: Available in `conftest.py` at project root
+  - `api_client` - DRF API client
+  - `authenticated_client` - Pre-authenticated API client
+  - `user`, `admin_user`, `manager_user` - User fixtures
+  - `multiple_users` - Creates 5 test users
 
 **Frontend:**
 - No test framework configured yet
@@ -350,6 +371,59 @@ GitHub Actions workflows in `.github/workflows/`:
 - next-auth 5.0.0-beta.30
 - axios 1.13.1
 - tailwindcss 4
+
+## Project Configuration
+
+The `backend/project/` folder provides centralized configuration management:
+
+### Settings Management
+
+Use Pydantic-based settings for type-safe configuration:
+
+```python
+from project.settings import settings
+
+# Access settings
+SECRET_KEY = settings.secret_key
+DEBUG = settings.debug
+ALLOWED_HOSTS = settings.allowed_hosts_list
+DATABASES = settings.get_database_config()
+SIMPLE_JWT = settings.get_simple_jwt_config()
+```
+
+See `backend/project/README.md` for complete documentation.
+
+### Constants
+
+Use project-wide constants instead of magic strings:
+
+```python
+from project.constants import UserRole, API_PREFIX, MAX_UPLOAD_SIZE
+
+# In models
+role = models.CharField(choices=UserRole.choices(), default=UserRole.USER.value)
+
+# In views
+if user.role == UserRole.ADMIN:
+    # Admin logic
+    pass
+```
+
+### Custom Exceptions
+
+Use custom exceptions for consistent error handling:
+
+```python
+from project.exceptions import ValidationError, NotFoundError
+
+@api_view(['GET'])
+def get_resource(request, pk):
+    try:
+        resource = Resource.objects.get(pk=pk)
+    except Resource.DoesNotExist:
+        raise NotFoundError(f"Resource {pk} not found")
+    # ...
+```
 
 ## Common Development Patterns
 

@@ -67,7 +67,7 @@ export const authConfig: NextAuthConfig = {
           ...session.user,
           ...(token.user as User),
         },
-      };
+      } as any;
     },
   },
   pages: {

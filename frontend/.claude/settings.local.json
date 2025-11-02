@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm:*)",
+      "Bash(chmod:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(openssl rand:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill -9)",
+      "Bash(kill:*)",
+      "WebSearch",
+      "Bash(./worktree help:*)",
+      "Bash(psql:*)",
+      "Bash(PGPASSWORD=postgres psql:*)",
+      "Bash(brew services:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

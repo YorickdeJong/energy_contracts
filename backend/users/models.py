@@ -38,7 +38,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     ROLE_CHOICES = [
         ('admin', 'Administrator'),
-        ('manager', 'Manager'),
+        ('landlord', 'Landlord'),
+        ('tenant', 'Tenant'),
         ('user', 'Regular User'),
     ]
 
@@ -68,7 +69,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     role = models.CharField(
         max_length=20,
         choices=ROLE_CHOICES,
-        default='user'
+        default='tenant'
     )
 
     # Status fields
@@ -101,3 +102,77 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_short_name(self):
         """Return the first_name."""
         return self.first_name or self.email
+
+    def is_landlord(self):
+        return self.role == 'landlord'
+
+    def is_admin(self):
+        return self.role == 'admin' or self.is_superuser
+
+    def is_tenant(self):
+        return self.role == 'tenant'
+
+
+class Household(models.Model):
+    """A household/property managed by a landlord with multiple tenants."""
+
+    name = models.CharField(max_length=255)  # e.g., "123 Main Street Apt 2"
+    address = models.TextField()
+    landlord = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='owned_households'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'household'
+        verbose_name_plural = 'households'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} - {self.landlord.email}"
+
+    @property
+    def member_count(self):
+        return self.memberships.filter(is_active=True).count()
+
+
+class HouseholdMembership(models.Model):
+    """Represents a tenant's membership in a household."""
+
+    MEMBERSHIP_ROLES = [
+        ('landlord', 'Landlord'),
+        ('tenant', 'Tenant'),
+    ]
+
+    household = models.ForeignKey(
+        Household,
+        on_delete=models.CASCADE,
+        related_name='memberships'
+    )
+    tenant = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='household_memberships'
+    )
+    role = models.CharField(max_length=20, choices=MEMBERSHIP_ROLES, default='tenant')
+    joined_at = models.DateTimeField(auto_now_add=True)
+    invited_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='invited_memberships'
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'household membership'
+        verbose_name_plural = 'household memberships'
+        ordering = ['-joined_at']
+        unique_together = [['household', 'tenant']]
+
+    def __str__(self):
+        return f"{self.tenant.email} in {self.household.name}"

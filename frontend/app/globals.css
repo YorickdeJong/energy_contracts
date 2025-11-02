@@ -1,26 +1,91 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Apple-inspired Design System Colors */
+  --primary: #007AFF;
+  --primary-dark: #0051D5;
+
+  --background: #FFFFFF;
+  --background-secondary: #F5F5F7;
+
+  --border: #E5E5E7;
+
+  --text-primary: #1D1D1F;
+  --text-secondary: #86868B;
+  --text-tertiary: #C7C7CC;
+
+  --success: #34C759;
+  --warning: #FF9500;
+  --error: #FF3B30;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Primary Colors */
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Background Colors */
+  --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+
+  /* Border Colors */
+  --color-border: var(--border);
+
+  /* Text Colors */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+
+  /* Semantic Colors */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+
+  /* Font Families */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: var(--font-geist-mono);
+
+  /* Border Radius */
+  --radius-sm: 0.5rem;   /* 8px - inputs */
+  --radius-md: 0.75rem;  /* 12px - buttons */
+  --radius-lg: 1rem;     /* 16px - cards/modals */
+  --radius-full: 9999px; /* full - badges */
+
+  /* Transitions */
+  --transition-duration: 200ms;
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.2s ease-out;
 }

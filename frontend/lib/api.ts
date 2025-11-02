@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { LoginCredentials, RegisterData, LoginResponse, RegisterResponse, User } from '@/types/auth';
+import type { Household, CreateHouseholdData, UpdateHouseholdData } from '@/types/household';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -44,5 +45,51 @@ export const authAPI = {
     await api.post('/api/users/logout/', {
       refresh: refreshToken,
     });
+  },
+};
+
+// Households API functions
+export const householdsAPI = {
+  async list(): Promise<{ results: Household[] }> {
+    const response = await api.get<{ results: Household[] }>('/api/users/households/');
+    return response.data;
+  },
+
+  async get(id: number): Promise<Household> {
+    const response = await api.get<Household>(`/api/users/households/${id}/`);
+    return response.data;
+  },
+
+  async create(data: CreateHouseholdData): Promise<Household> {
+    const response = await api.post<Household>('/api/users/households/', data);
+    return response.data;
+  },
+
+  async update(id: number, data: UpdateHouseholdData): Promise<Household> {
+    const response = await api.patch<Household>(`/api/users/households/${id}/`, data);
+    return response.data;
+  },
+
+  async delete(id: number): Promise<void> {
+    await api.delete(`/api/users/households/${id}/`);
+  },
+
+  async getMembers(id: number) {
+    const response = await api.get(`/api/users/households/${id}/members/`);
+    return response.data;
+  },
+
+  async addMember(id: number, email: string, firstName?: string, lastName?: string) {
+    const response = await api.post(`/api/users/households/${id}/add_member/`, {
+      email,
+      first_name: firstName,
+      last_name: lastName,
+    });
+    return response.data;
+  },
+
+  async removeMember(householdId: number, userId: number) {
+    const response = await api.delete(`/api/users/households/${householdId}/members/${userId}/`);
+    return response.data;
   },
 };
