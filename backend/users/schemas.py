@@ -5,7 +5,12 @@ from typing import Optional
 class HouseholdOnboardingSchema(BaseModel):
     """Schema for creating a household during onboarding"""
     name: str = Field(..., min_length=1, max_length=255)
-    address: str = Field(..., min_length=1)
+    # Accept either a single address field or detailed address components
+    address: Optional[str] = None
+    street_address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
 
     @field_validator('name')
     def validate_name(cls, v):
@@ -13,11 +18,30 @@ class HouseholdOnboardingSchema(BaseModel):
             raise ValueError('Household name cannot be empty')
         return v.strip()
 
-    @field_validator('address')
-    def validate_address(cls, v):
-        if not v or not v.strip():
+    def model_post_init(self, __context):
+        """Construct full address from components if not provided"""
+        if not self.address:
+            # Build address from components
+            components = []
+            if self.street_address:
+                components.append(self.street_address)
+            if self.city:
+                components.append(self.city)
+            if self.postal_code:
+                components.append(self.postal_code)
+            if self.country:
+                components.append(self.country)
+
+            if not components:
+                raise ValueError('Either address or address components (street_address, city, etc.) must be provided')
+
+            self.address = ', '.join(components)
+
+        # Validate final address
+        if not self.address or not self.address.strip():
             raise ValueError('Address cannot be empty')
-        return v.strip()
+
+        self.address = self.address.strip()
 
 
 class LandlordUpdateSchema(BaseModel):

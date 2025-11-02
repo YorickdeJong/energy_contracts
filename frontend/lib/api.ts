@@ -11,6 +11,7 @@ import type {
 } from '@/types/onboarding';
 import type { AnalyticsResponse } from '@/types/analytics';
 import type { TasksResponse, Task, CreateTaskData, UpdateTaskData, TaskFilters } from '@/types/tasks';
+import type { VerifyInvitationResponse, AcceptInvitationData, AcceptInvitationResponse } from '@/types/invitations';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -355,4 +356,19 @@ export const uploadFile = async (
   });
 
   return response.data;
+};
+
+// Invitation API functions
+export const invitationsAPI = {
+  async verify(token: string): Promise<VerifyInvitationResponse> {
+    const response = await api.post<VerifyInvitationResponse>('/api/users/invitations/verify/', {
+      token,
+    });
+    return response.data;
+  },
+
+  async accept(data: AcceptInvitationData): Promise<AcceptInvitationResponse> {
+    const response = await api.post<AcceptInvitationResponse>('/api/users/invitations/accept/', data);
+    return response.data;
+  },
 };

@@ -22,7 +22,7 @@ import type { Household } from "@/types/household";
 
 const initialOnboardingSteps = [
   { label: "Household", description: "Add your property" },
-  { label: "Landlord", description: "Your details" },
+  { label: "Landlord", description: "Landlord details" },
   { label: "Tenancies", description: "Upload agreements" },
   { label: "Tenants", description: "Review & add" },
 ];
@@ -39,6 +39,7 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0); // 0 = intro card for existing landlords
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   // Detect if this is initial onboarding or adding a new household
   const isOnboarded = (session?.user as any)?.is_onboarded || false;
@@ -60,6 +61,7 @@ export default function OnboardingPage() {
   const [landlordData, setLandlordData] = useState<LandlordUpdateData>({
     first_name: "",
     last_name: "",
+    email: "",
     phone_number: "",
   });
 
@@ -82,6 +84,7 @@ export default function OnboardingPage() {
       setLandlordData({
         first_name: (session.user as any).first_name || "",
         last_name: (session.user as any).last_name || "",
+        email: (session.user as any).email || "",
         phone_number: (session.user as any).phone_number || "",
       });
     }
@@ -380,6 +383,22 @@ export default function OnboardingPage() {
     }
   };
 
+  // Save & Exit (for existing landlords)
+  const handleSaveAndExit = () => {
+    // Just navigate back to dashboard - progress is already saved
+    router.push("/dashboard");
+  };
+
+  // Cancel (shows confirmation modal)
+  const handleCancelClick = () => {
+    setShowCancelModal(true);
+  };
+
+  // Confirm cancel (discard and go to dashboard)
+  const handleConfirmCancel = () => {
+    router.push("/dashboard");
+  };
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -414,16 +433,30 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-gray-50/70 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-semibold text-text-primary mb-2">
-            {isOnboarded ? "Add New Household" : "Welcome! Let's get you set up"}
-          </h1>
-          <p className="text-lg text-text-secondary">
-            {isOnboarded
-              ? "Add another property to your portfolio"
-              : "We'll guide you through adding your first household and tenants"}
-          </p>
+        {/* Header with Save & Exit button */}
+        <div className="mb-8">
+          <div className="flex justify-between items-start">
+            <div className="text-center flex-1">
+              <h1 className="text-4xl font-semibold text-text-primary mb-2">
+                {isOnboarded ? "Add New Household" : "Welcome! Let's get you set up"}
+              </h1>
+              <p className="text-lg text-text-secondary">
+                {isOnboarded
+                  ? "Add another property to your portfolio"
+                  : "We'll guide you through adding your first household and tenants"}
+              </p>
+            </div>
+            {/* Save & Exit button (only show for existing landlords in active steps) */}
+            {isOnboarded && currentStep > 0 && (
+              <Button
+                onClick={handleSaveAndExit}
+                variant="secondary"
+                className="ml-4"
+              >
+                Save & Exit
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Intro Card for Existing Landlords */}
@@ -567,7 +600,7 @@ export default function OnboardingPage() {
           {/* Step 2: Landlord Information - Only for first-time onboarding */}
           {!isOnboarded && currentStep === 2 && (
             <FormSection
-              title="Your Details"
+              title="Landlord Details"
               description="Confirm your contact information"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -595,6 +628,20 @@ export default function OnboardingPage() {
                 />
               </div>
               <Input
+                label="Email"
+                type="email"
+                placeholder="landlord@example.com"
+                value={landlordData.email}
+                onChange={(e) =>
+                  setLandlordData({
+                    ...landlordData,
+                    email: e.target.value,
+                  })
+                }
+                required
+                helperText="This email will be used for landlord contact information"
+              />
+              <Input
                 label="Phone Number"
                 type="tel"
                 placeholder="+31 6 12345678"
@@ -606,13 +653,6 @@ export default function OnboardingPage() {
                   })
                 }
               />
-              <Input
-                label="Email"
-                type="email"
-                value={session.user?.email || ""}
-                disabled
-                helperText="Email cannot be changed"
-              />
               <div className="flex gap-4">
                 <Button variant="secondary" onClick={handleBack} fullWidth>
                   Back
@@ -621,7 +661,7 @@ export default function OnboardingPage() {
                   onClick={handleUpdateLandlord}
                   isLoading={isLoading}
                   disabled={
-                    !landlordData.first_name || !landlordData.last_name
+                    !landlordData.first_name || !landlordData.last_name || !landlordData.email
                   }
                   fullWidth
                   size="lg"
@@ -895,6 +935,57 @@ export default function OnboardingPage() {
             </FormSection>
           )}
         </Card>
+
+        {/* Cancel Button - Show at bottom for all steps except intro */}
+        {currentStep > 0 && (
+          <div className="mt-4 text-center">
+            <Button
+              onClick={handleCancelClick}
+              variant="secondary"
+              className="text-text-secondary hover:text-text-primary"
+            >
+              Cancel & Discard Progress
+            </Button>
+          </div>
+        )}
+
+        {/* Cancel Confirmation Modal */}
+        {showCancelModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="max-w-md mx-4" padding="lg">
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-4 bg-warning/10 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-text-primary mb-2">
+                  Discard Progress?
+                </h3>
+                <p className="text-text-secondary mb-6">
+                  Are you sure you want to cancel? Any unsaved changes will be lost.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setShowCancelModal(false)}
+                    variant="secondary"
+                    fullWidth
+                  >
+                    Keep Working
+                  </Button>
+                  <Button
+                    onClick={handleConfirmCancel}
+                    variant="primary"
+                    fullWidth
+                    className="bg-error hover:bg-error/90"
+                  >
+                    Discard & Exit
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

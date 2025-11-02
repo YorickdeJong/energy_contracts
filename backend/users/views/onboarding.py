@@ -22,7 +22,6 @@ from ..schemas import (
     TenantManualAddSchema,
     OnboardingStatusSchema,
 )
-from ai_services.providers import GeminiProvider
 
 logger = logging.getLogger(__name__)
 
@@ -227,8 +226,13 @@ class OnboardingViewSet(viewsets.ViewSet):
             tenancy_agreement.save(update_fields=['status'])
 
             try:
-                # Extract data using Gemini
-                provider = GeminiProvider()
+                # Lazy import AI provider (only when needed)
+                try:
+                    from ai_services.providers import GeminiProvider
+                    provider = GeminiProvider()
+                except ImportError:
+                    raise Exception("AI service dependencies not installed. Please install google-generativeai.")
+
                 file_path = tenancy_agreement.file.path
                 extracted_data = provider.extract_tenant_data(file_path)
 
