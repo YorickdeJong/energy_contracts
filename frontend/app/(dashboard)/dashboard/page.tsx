@@ -35,16 +35,24 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (session) {
+      loadDashboardData();
+    }
+  }, [session]);
 
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
       setError("");
 
+      const accessToken = (session as any)?.accessToken;
+      if (!accessToken) {
+        setError("No access token found. Please log in again.");
+        return;
+      }
+
       // Fetch all households for the landlord
-      const response = await householdsAPI.list();
+      const response = await householdsAPI.list(accessToken);
       const householdsData = response.results || [];
       setHouseholds(householdsData);
 
@@ -92,7 +100,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-background border-b border-border">
+      <div className="">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>

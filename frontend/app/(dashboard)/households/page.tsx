@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, Button, EmptyState, Modal, Input } from "@/app/components/ui";
 import { householdsAPI } from "@/lib/api";
 import type { Household, CreateHouseholdData } from "@/types/household";
@@ -9,19 +10,28 @@ import { BuildingOfficeIcon, PlusIcon, UsersIcon } from "@heroicons/react/24/out
 
 export default function HouseholdsPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [households, setHouseholds] = useState<Household[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    loadHouseholds();
-  }, []);
+    if (session) {
+      loadHouseholds();
+    }
+  }, [session]);
 
   const loadHouseholds = async () => {
     try {
       setIsLoading(true);
-      const data = await householdsAPI.list();
+      const accessToken = (session as any)?.accessToken;
+      if (!accessToken) {
+        setError("No access token found. Please log in again.");
+        return;
+      }
+
+      const data = await householdsAPI.list(accessToken);
       setHouseholds(data.results);
     } catch (error) {
       setError("Failed to load households");
@@ -32,7 +42,13 @@ export default function HouseholdsPage() {
 
   const handleCreateHousehold = async (data: CreateHouseholdData) => {
     try {
-      await householdsAPI.create(data);
+      const accessToken = (session as any)?.accessToken;
+      if (!accessToken) {
+        setError("No access token found. Please log in again.");
+        return;
+      }
+
+      await householdsAPI.create(data, accessToken);
       setIsCreateModalOpen(false);
       loadHouseholds();
     } catch (error: any) {

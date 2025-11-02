@@ -67,46 +67,78 @@ export const authAPI = {
 
 // Households API functions
 export const householdsAPI = {
-  async list(): Promise<{ results: Household[] }> {
-    const response = await api.get<{ results: Household[] }>('/api/users/households/');
-    return response.data;
-  },
-
-  async get(id: number): Promise<Household> {
-    const response = await api.get<Household>(`/api/users/households/${id}/`);
-    return response.data;
-  },
-
-  async create(data: CreateHouseholdData): Promise<Household> {
-    const response = await api.post<Household>('/api/users/households/', data);
-    return response.data;
-  },
-
-  async update(id: number, data: UpdateHouseholdData): Promise<Household> {
-    const response = await api.patch<Household>(`/api/users/households/${id}/`, data);
-    return response.data;
-  },
-
-  async delete(id: number): Promise<void> {
-    await api.delete(`/api/users/households/${id}/`);
-  },
-
-  async getMembers(id: number) {
-    const response = await api.get(`/api/users/households/${id}/members/`);
-    return response.data;
-  },
-
-  async addMember(id: number, email: string, firstName?: string, lastName?: string) {
-    const response = await api.post(`/api/users/households/${id}/add_member/`, {
-      email,
-      first_name: firstName,
-      last_name: lastName,
+  async list(accessToken: string): Promise<{ results: Household[] }> {
+    const response = await api.get<{ results: Household[] }>('/api/users/households/', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
     return response.data;
   },
 
-  async removeMember(householdId: number, userId: number) {
-    const response = await api.delete(`/api/users/households/${householdId}/members/${userId}/`);
+  async get(id: number, accessToken: string): Promise<Household> {
+    const response = await api.get<Household>(`/api/users/households/${id}/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async create(data: CreateHouseholdData, accessToken: string): Promise<Household> {
+    const response = await api.post<Household>('/api/users/households/', data, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async update(id: number, data: UpdateHouseholdData, accessToken: string): Promise<Household> {
+    const response = await api.patch<Household>(`/api/users/households/${id}/`, data, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async delete(id: number, accessToken: string): Promise<void> {
+    await api.delete(`/api/users/households/${id}/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  },
+
+  async getMembers(id: number, accessToken: string) {
+    const response = await api.get(`/api/users/households/${id}/members/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async addMember(id: number, email: string, accessToken: string, firstName?: string, lastName?: string) {
+    const response = await api.post(`/api/users/households/${id}/add_member/`, {
+      email,
+      first_name: firstName,
+      last_name: lastName,
+    }, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async removeMember(householdId: number, userId: number, accessToken: string) {
+    const response = await api.delete(`/api/users/households/${householdId}/members/${userId}/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
     return response.data;
   },
 };
