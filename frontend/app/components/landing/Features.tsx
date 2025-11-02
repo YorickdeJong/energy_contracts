@@ -1,6 +1,10 @@
+"use client";
+
 import { HomeIcon, DocumentTextIcon, BellIcon } from "@heroicons/react/24/outline";
+import { useScrollAnimation } from "@/app/hooks/useScrollAnimation";
 
 export default function Features() {
+  const { ref, isVisible } = useScrollAnimation();
   const features = [
     {
       icon: HomeIcon,
@@ -20,10 +24,10 @@ export default function Features() {
   ];
 
   return (
-    <section className="py-24 bg-background">
+    <section ref={ref} className="py-24 bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center mb-16">
+        <div className={`text-center mb-16 ${isVisible ? 'animate-fadeInUp' : ''}`}>
           <h2 className="text-4xl sm:text-5xl font-bold text-text-primary mb-4">
             Everything You Need in One Place
           </h2>
@@ -37,7 +41,7 @@ export default function Features() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="bg-white rounded-2xl p-8 shadow-sm border border-border hover:shadow-md transition-shadow duration-200"
+              className={`bg-white rounded-2xl p-8 shadow-sm border border-border hover:shadow-lg hover:scale-105 transition-all duration-300 ${isVisible ? `animate-fadeInUp stagger-${index + 1}` : ''}`}
             >
               <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-xl mb-6">
                 <feature.icon className="h-8 w-8 text-primary" />

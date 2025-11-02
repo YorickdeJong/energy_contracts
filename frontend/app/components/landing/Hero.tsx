@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/app/components/ui";
 import { ArrowRightIcon, PlayCircleIcon } from "@heroicons/react/24/outline";
@@ -40,8 +42,7 @@ export default function Hero() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Link href="/register">
               <Button
-                variant="primary"
-                className="w-full sm:w-auto px-8 py-4 text-lg bg-white text-primary hover:bg-white/90 shadow-xl"
+                className="w-full sm:w-auto px-8 py-4 text-lg bg-white text-primary hover:bg-white/90 shadow-xl rounded-xl font-medium transition-all duration-200"
               >
                 Sign Up Free
                 <ArrowRightIcon className="h-5 w-5 ml-2" />

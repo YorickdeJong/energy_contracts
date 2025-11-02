@@ -1,14 +1,27 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { Metadata } from "next";
+import Hero from "./components/landing/Hero";
+import Features from "./components/landing/Features";
+import HowItWorks from "./components/landing/HowItWorks";
+import Benefits from "./components/landing/Benefits";
+import TrustBadges from "./components/landing/TrustBadges";
+import CTASection from "./components/landing/CTASection";
+import LandingFooter from "./components/landing/LandingFooter";
 
-export default async function Home() {
-  const session = await auth();
+export const metadata: Metadata = {
+  title: "Energy Contracts - Property Management Made Simple",
+  description: "Streamline tenancy agreements, track energy contracts, and manage all your rental properties in one secure place. Trusted by landlords.",
+};
 
-  // Redirect authenticated users to the dashboard
-  if (session?.user) {
-    redirect("/dashboard");
-  }
-
-  // Redirect unauthenticated users to login
-  redirect("/login");
+export default function Home() {
+  return (
+    <main className="min-h-screen bg-background">
+      <Hero />
+      <Features />
+      <HowItWorks />
+      <Benefits />
+      <TrustBadges />
+      <CTASection />
+      <LandingFooter />
+    </main>
+  );
 }

@@ -66,7 +66,7 @@ class TestHouseholdViewSet:
         assert response.data['results'][0]['name'] == 'Test Apartment'
 
     def test_list_households_as_regular_user(self, api_client):
-        """Test that regular users cannot list households"""
+        """Test that regular users with no memberships get empty list"""
         user = User.objects.create_user(
             email='user@example.com',
             password='testpass123',
@@ -75,7 +75,10 @@ class TestHouseholdViewSet:
         api_client.force_authenticate(user=user)
         response = api_client.get('/api/users/households/')
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        # Regular users are authenticated, so they get 200 with empty results
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        assert len(response.data['results']) == 0
 
     def test_create_household(self, api_client, landlord_user):
         """Test creating a new household"""
@@ -88,7 +91,8 @@ class TestHouseholdViewSet:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['name'] == 'New Apartment'
-        assert response.data['landlord'] == landlord_user.id
+        assert response.data['landlord']['id'] == landlord_user.id
+        assert response.data['landlord']['email'] == landlord_user.email
 
         # Verify household was created in database
         assert Household.objects.filter(name='New Apartment').exists()
@@ -134,7 +138,7 @@ class TestHouseholdViewSet:
         assert not Household.objects.filter(id=household.id).exists()
 
     def test_add_member_to_household(self, api_client, landlord_user, household):
-        """Test adding a new member to household"""
+        """Test adding a new member to household (creates invitation for new user)"""
         api_client.force_authenticate(user=landlord_user)
         data = {
             'email': 'newmember@example.com',
@@ -145,15 +149,18 @@ class TestHouseholdViewSet:
         response = api_client.post(f'/api/users/households/{household.id}/add_member/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['tenant']['email'] == 'newmember@example.com'
+        assert response.data['email'] == 'newmember@example.com'
+        assert response.data['invitation_sent'] is True
+        assert 'invitation_id' in response.data
 
-        # Verify user was created
+        # Verify inactive user was created
         assert User.objects.filter(email='newmember@example.com').exists()
         new_user = User.objects.get(email='newmember@example.com')
         assert new_user.role == 'tenant'
+        assert new_user.is_active is False  # Inactive until they accept invitation
 
-        # Verify membership was created
-        assert HouseholdMembership.objects.filter(
+        # Verify membership is NOT created yet (only created when invitation is accepted)
+        assert not HouseholdMembership.objects.filter(
             household=household,
             tenant=new_user
         ).exists()

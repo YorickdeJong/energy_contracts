@@ -1,4 +1,5 @@
 import { UserPlusIcon, CloudArrowUpIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import Image from "next/image";
 
 export default function HowItWorks() {
   const steps = [
@@ -23,8 +24,9 @@ export default function HowItWorks() {
   ];
 
   return (
-    <section id="how-it-works" className="py-24 bg-background-secondary">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="how-it-works" className="py-24  overflow-hidden relative">
+      <Image src="/g-pulse-energieautarke-haeuser-haus-solaranlage-istock_30371_1686745777.webp" alt="Wind Energy" width={1000} height={1000} className="w-full h-full object-cover absolute top-0 left-0  z-[-1]"  />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-background-secondary">
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl sm:text-5xl font-bold text-text-primary mb-4">
