@@ -186,8 +186,29 @@ class OnboardingViewSet(viewsets.ViewSet):
             tenancy_agreement = TenancyAgreement.objects.create(
                 household=household,
                 file=uploaded_file,
-                status='pending'
+                status='processing'  # Set to processing immediately
             )
+
+            # Automatically trigger AI extraction
+            try:
+                from ai_services.providers import GeminiProvider
+                provider = GeminiProvider()
+
+                file_path = tenancy_agreement.file.path
+                extracted_data = provider.extract_tenant_data(file_path)
+
+                # Update with extracted data
+                tenancy_agreement.extracted_data = extracted_data
+                tenancy_agreement.status = 'processed'
+                tenancy_agreement.save(update_fields=['extracted_data', 'status'])
+
+                logger.info(f"Successfully extracted data from tenancy agreement {tenancy_agreement.id}")
+
+            except Exception as extraction_error:
+                logger.error(f"Error extracting tenant data: {str(extraction_error)}")
+                tenancy_agreement.status = 'failed'
+                tenancy_agreement.save(update_fields=['status'])
+                # Don't fail the upload, just mark as failed extraction
 
             serializer = TenancyAgreementSerializer(tenancy_agreement)
             return Response(serializer.data, status=status.HTTP_201_CREATED)

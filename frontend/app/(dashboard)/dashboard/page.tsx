@@ -130,26 +130,15 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="">
         <div className="max-w-7xl mx-auto ">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-semibold text-text-primary">
-                Welcome back, {session?.user?.first_name || "User"}!
-              </h1>
-              <p className="mt-2 text-lg text-text-secondary">
-                {userRole === 'tenant'
-                  ? "View your household and energy usage"
-                  : "Manage your properties and tenants"}
-              </p>
-            </div>
-            {(userRole === 'landlord' || userRole === 'admin') && (
-              <Button
-                onClick={handleAddHousehold}
-                className="flex items-center space-x-2"
-              >
-                <PlusIcon className="w-5 h-5" />
-                <span>Add New Household</span>
-              </Button>
-            )}
+          <div>
+            <h1 className="text-4xl font-semibold text-text-primary">
+              Welcome back, {session?.user?.first_name || "User"}!
+            </h1>
+            <p className="mt-2 text-lg text-text-secondary">
+              {userRole === 'tenant'
+                ? "View your household and energy usage"
+                : "Manage your properties and tenants"}
+            </p>
           </div>
 
           {/* Onboarding Banner */}
