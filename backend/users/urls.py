@@ -9,6 +9,7 @@ from .views import (
     HouseholdViewSet,
     InvitationViewSet,
 )
+from .views.tenancies import TenancyViewSet
 
 app_name = 'users'
 
@@ -18,6 +19,7 @@ router = DefaultRouter()
 # Register ViewSets
 router.register(r'households', HouseholdViewSet, basename='household')
 router.register(r'invitations', InvitationViewSet, basename='invitation')
+router.register(r'tenancies', TenancyViewSet, basename='tenancy')
 
 # Try to import and register OnboardingViewSet if available
 try:

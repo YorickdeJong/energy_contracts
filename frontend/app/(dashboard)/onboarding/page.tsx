@@ -135,12 +135,18 @@ export default function OnboardingPage() {
     }
   }, [createdHousehold, currentStep, householdData]);
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated or token refresh failed
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     }
-  }, [status, router]);
+
+    // Check if token refresh failed
+    if (session && (session as any).error === "RefreshAccessTokenError") {
+      // Force sign out and redirect to login
+      router.push("/login");
+    }
+  }, [status, session, router]);
 
   if (status === "loading") {
     return (

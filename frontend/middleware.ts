@@ -12,11 +12,7 @@ export default auth((req) => {
   // Redirect authenticated users away from login/register
   if (isAuthPage) {
     if (isAuth) {
-      // Check if landlord needs onboarding
-      if (user?.role === 'landlord' && !user?.is_onboarded) {
-        return NextResponse.redirect(new URL("/onboarding", req.url));
-      }
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
   }
@@ -34,19 +30,6 @@ export default auth((req) => {
     return NextResponse.redirect(
       new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
     );
-  }
-
-  // Onboarding flow logic for landlords
-  if (isAuth && user?.role === 'landlord') {
-    const needsOnboarding = !user?.is_onboarded;
-
-    // If landlord not onboarded, redirect to onboarding (unless already there)
-    if (needsOnboarding && !isOnboardingPage && !isPublicPath) {
-      return NextResponse.redirect(new URL("/onboarding", req.url));
-    }
-
-    // Allow onboarded landlords to access onboarding to add more households
-    // (No redirect needed - they can freely access /onboarding)
   }
 
   // Non-landlords shouldn't access onboarding

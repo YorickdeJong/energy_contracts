@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.utils import timezone
 from pydantic import ValidationError as PydanticValidationError
 
 from ..models import User, Household, HouseholdMembership, TenancyAgreement
@@ -21,6 +22,7 @@ from ..schemas import (
     TenancyUploadSchema,
     TenantManualAddSchema,
     OnboardingStatusSchema,
+    TenancyConfirmSchema,
 )
 
 logger = logging.getLogger(__name__)
@@ -265,6 +267,77 @@ class OnboardingViewSet(viewsets.ViewSet):
             logger.error(f"Error processing tenancy agreement: {str(e)}")
             return Response(
                 {'error': 'Failed to process tenancy agreement'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['post'], url_path='tenancy/confirm')
+    def confirm_tenancy(self, request):
+        """
+        Confirm and create tenancy from extracted data
+
+        POST /api/users/onboarding/tenancy/confirm/
+        {
+            "tenancy_agreement_id": 1,
+            "tenancy_name": "2024-2025 Lease",
+            "start_date": "2024-01-15",
+            "end_date": "2025-01-14",
+            "monthly_rent": 1500.00,
+            "deposit": 3000.00
+        }
+        """
+        try:
+            # Validate with Pydantic
+            confirm_data = TenancyConfirmSchema(**request.data)
+
+            # Get tenancy agreement and verify ownership + processed status
+            tenancy_agreement = get_object_or_404(
+                TenancyAgreement,
+                id=confirm_data.tenancy_agreement_id,
+                household__landlord=request.user,
+                status='processed'
+            )
+
+            # Check if tenancy already exists for this household with same dates
+            from ..models import Tenancy
+            existing_tenancy = Tenancy.objects.filter(
+                household=tenancy_agreement.household,
+                start_date=confirm_data.start_date
+            ).first()
+
+            if existing_tenancy:
+                return Response(
+                    {'error': 'Tenancy with same start date already exists for this household'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Create the Tenancy record
+            tenancy = Tenancy.objects.create(
+                household=tenancy_agreement.household,
+                name=confirm_data.tenancy_name,
+                start_date=confirm_data.start_date,
+                end_date=confirm_data.end_date,
+                monthly_rent=confirm_data.monthly_rent,
+                deposit=confirm_data.deposit,
+                status='active' if confirm_data.start_date <= timezone.now().date() else 'future',
+                proof_document=tenancy_agreement.file  # Link the proof document
+            )
+
+            logger.info(f"Created tenancy {tenancy.id} for household {tenancy.household.id}")
+
+            # Return tenancy data
+            from ..serializers import TenancySerializer
+            serializer = TenancySerializer(tenancy)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except PydanticValidationError as e:
+            return Response(
+                {'errors': e.errors()},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error(f"Error confirming tenancy: {str(e)}")
+            return Response(
+                {'error': f'Failed to create tenancy: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

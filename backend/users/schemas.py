@@ -78,11 +78,87 @@ class TenancyUploadSchema(BaseModel):
 
 
 class TenantExtractedSchema(BaseModel):
-    """Schema for extracted tenant data from AI"""
+    """Schema for extracted tenant data from AI (legacy single tenant)"""
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone_number: Optional[str] = Field(None, pattern=r'^\+?1?\d{9,15}$')
+
+    class Config:
+        from_attributes = True
+
+
+class RenterExtractedSchema(BaseModel):
+    """Schema for a single extracted renter from AI"""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = Field(None, pattern=r'^\+?1?\d{9,15}$')
+    is_primary: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class TenancyExtractedSchema(BaseModel):
+    """Schema for complete extracted tenancy data from AI"""
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    monthly_rent: Optional[Decimal] = Field(None, ge=0)
+    deposit: Optional[Decimal] = Field(None, ge=0)
+    renters: List[RenterExtractedSchema] = []
+    # Backward compatibility fields
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
+
+    @field_validator('start_date', 'end_date', mode='before')
+    def parse_date(cls, v):
+        """Parse date from various string formats"""
+        if v is None or isinstance(v, date):
+            return v
+        if isinstance(v, str):
+            from dateutil import parser
+            try:
+                return parser.parse(v).date()
+            except:
+                return None
+        return v
+
+    @model_validator(mode='after')
+    def validate_dates(self):
+        """Validate that end_date is after start_date if both present"""
+        if self.end_date and self.start_date and self.end_date <= self.start_date:
+            raise ValueError('End date must be after start date')
+        return self
+
+    class Config:
+        from_attributes = True
+
+
+class TenancyConfirmSchema(BaseModel):
+    """Schema for confirming tenancy creation with user input"""
+    tenancy_agreement_id: int = Field(..., gt=0)
+    tenancy_name: str = Field(..., min_length=1, max_length=255)
+    start_date: date
+    end_date: Optional[date] = None
+    monthly_rent: Decimal = Field(..., ge=0)
+    deposit: Decimal = Field(default=Decimal('0.00'), ge=0)
+    # Renters will be created separately in Step 4
+
+    @field_validator('tenancy_name')
+    def validate_name(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Tenancy name cannot be empty')
+        return v.strip()
+
+    @model_validator(mode='after')
+    def validate_dates(self):
+        """Validate that end_date is after start_date"""
+        if self.end_date and self.end_date <= self.start_date:
+            raise ValueError('End date must be after start date')
+        return self
 
     class Config:
         from_attributes = True

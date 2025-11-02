@@ -12,6 +12,17 @@ import type {
 import type { AnalyticsResponse } from '@/types/analytics';
 import type { TasksResponse, Task, CreateTaskData, UpdateTaskData, TaskFilters } from '@/types/tasks';
 import type { VerifyInvitationResponse, AcceptInvitationData, AcceptInvitationResponse } from '@/types/invitations';
+import type {
+  TenanciesResponse,
+  TenancyResponse,
+  Tenancy,
+  CreateTenancyData,
+  UpdateTenancyData,
+  AddRenterData,
+  StartMoveoutData,
+  TenancyFilters,
+  Renter
+} from '@/types/tenancy';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -195,10 +206,10 @@ export const onboardingAPI = {
   ): Promise<TenancyAgreement> {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('household', householdId.toString());
+    formData.append('household_id', householdId.toString());
 
     const response = await api.post<TenancyAgreement>(
-      '/api/users/onboarding/tenancy-agreements/',
+      '/api/users/onboarding/tenancy/upload/',
       formData,
       {
         headers: {
@@ -215,7 +226,7 @@ export const onboardingAPI = {
     accessToken: string
   ): Promise<TenancyAgreement> {
     const response = await api.post<TenancyAgreement>(
-      `/api/users/onboarding/tenancy-agreements/${agreementId}/process/`,
+      `/api/users/onboarding/${agreementId}/process/`,
       {},
       {
         headers: {
@@ -231,7 +242,7 @@ export const onboardingAPI = {
     accessToken: string
   ): Promise<TenancyAgreement> {
     const response = await api.get<TenancyAgreement>(
-      `/api/users/onboarding/tenancy-agreements/${agreementId}/`,
+      `/api/users/onboarding/${agreementId}/`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -247,8 +258,11 @@ export const onboardingAPI = {
     accessToken: string
   ): Promise<User> {
     const response = await api.post<User>(
-      `/api/users/onboarding/households/${householdId}/tenants/`,
-      data,
+      '/api/users/onboarding/tenant/add/',
+      {
+        household_id: householdId,
+        ...data,
+      },
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -369,6 +383,111 @@ export const invitationsAPI = {
 
   async accept(data: AcceptInvitationData): Promise<AcceptInvitationResponse> {
     const response = await api.post<AcceptInvitationResponse>('/api/users/invitations/accept/', data);
+    return response.data;
+  },
+};
+
+// Tenancies API functions
+export const tenanciesAPI = {
+  async list(accessToken: string, filters?: TenancyFilters): Promise<TenanciesResponse> {
+    const response = await api.get<TenanciesResponse>('/api/users/tenancies/', {
+      params: filters,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async get(id: number, accessToken: string): Promise<TenancyResponse> {
+    const response = await api.get<TenancyResponse>(`/api/users/tenancies/${id}/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async create(data: CreateTenancyData, accessToken: string): Promise<TenancyResponse> {
+    const response = await api.post<TenancyResponse>('/api/users/tenancies/', data, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async update(id: number, data: UpdateTenancyData, accessToken: string): Promise<TenancyResponse> {
+    const response = await api.patch<TenancyResponse>(`/api/users/tenancies/${id}/`, data, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async delete(id: number, accessToken: string): Promise<void> {
+    await api.delete(`/api/users/tenancies/${id}/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  },
+
+  async addRenter(id: number, data: AddRenterData, accessToken: string): Promise<{ success: boolean; data: Renter; message: string }> {
+    const response = await api.post(`/api/users/tenancies/${id}/add_renter/`, data, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async removeRenter(tenancyId: number, renterId: number, accessToken: string): Promise<void> {
+    await api.delete(`/api/users/tenancies/${tenancyId}/renters/${renterId}/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  },
+
+  async activate(id: number, accessToken: string): Promise<TenancyResponse> {
+    const response = await api.post<TenancyResponse>(`/api/users/tenancies/${id}/activate/`, {}, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async startMoveout(id: number, data: StartMoveoutData, accessToken: string): Promise<TenancyResponse> {
+    const response = await api.post<TenancyResponse>(`/api/users/tenancies/${id}/start_moveout/`, data, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async markMovedOut(id: number, accessToken: string): Promise<TenancyResponse> {
+    const response = await api.post<TenancyResponse>(`/api/users/tenancies/${id}/mark_moved_out/`, {}, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  },
+
+  async uploadProof(id: number, file: File, accessToken: string): Promise<TenancyResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post<TenancyResponse>(`/api/users/tenancies/${id}/upload_proof/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
     return response.data;
   },
 };

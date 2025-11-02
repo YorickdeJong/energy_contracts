@@ -80,6 +80,15 @@ class LoginView(TokenObtainPairView):
     permission_classes = (AllowAny,)
     serializer_class = CustomTokenObtainPairSerializer
 
+    def post(self, request, *args, **kwargs):
+        """Override post to add debugging."""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Login attempt - Request data: {request.data}")
+        logger.info(f"Login attempt - Email field: {request.data.get('email')}")
+        logger.info(f"Login attempt - Has password: {bool(request.data.get('password'))}")
+        return super().post(request, *args, **kwargs)
+
 
 class RefreshTokenView(TokenRefreshView):
     """

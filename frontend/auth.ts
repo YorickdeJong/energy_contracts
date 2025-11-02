@@ -41,7 +41,7 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
       // Initial sign in
       if (account && user) {
         const appUser = user as unknown as User & { accessToken?: string; refreshToken?: string };
@@ -49,6 +49,7 @@ export const authConfig: NextAuthConfig = {
           ...token,
           accessToken: appUser.accessToken!,
           refreshToken: appUser.refreshToken!,
+          accessTokenExpiry: Date.now() + 15 * 60 * 1000, // 15 minutes from now
           user: {
             id: Number(appUser.id),
             email: appUser.email,
@@ -66,10 +67,58 @@ export const authConfig: NextAuthConfig = {
         };
       }
 
-      // Return previous token if not expired
-      return token;
+      // Handle manual session updates (e.g., after profile update)
+      if (trigger === "update" && session?.user) {
+        return {
+          ...token,
+          user: {
+            ...token.user,
+            ...session.user,
+          },
+        };
+      }
+
+      // Check if access token has expired (with 1 minute buffer)
+      const accessTokenExpiry = token.accessTokenExpiry as number;
+      if (accessTokenExpiry && Date.now() < accessTokenExpiry - 60 * 1000) {
+        // Token still valid
+        return token;
+      }
+
+      // If no expiry is set (legacy sessions), try to refresh
+      if (!accessTokenExpiry) {
+        console.log("No access token expiry found, attempting refresh...");
+      }
+
+      // Access token has expired, try to refresh it
+      try {
+        const refreshToken = token.refreshToken as string;
+        const response = await authAPI.refreshToken(refreshToken);
+
+        return {
+          ...token,
+          accessToken: response.access,
+          refreshToken: response.refresh,
+          accessTokenExpiry: Date.now() + 15 * 60 * 1000, // 15 minutes from now
+        };
+      } catch (error) {
+        console.error("Failed to refresh access token:", error);
+        // Return token with error flag to trigger re-authentication
+        return {
+          ...token,
+          error: "RefreshAccessTokenError",
+        };
+      }
     },
     async session({ session, token }) {
+      // If token refresh failed, force re-authentication
+      if (token.error) {
+        return {
+          ...session,
+          error: token.error,
+        } as any;
+      }
+
       return {
         ...session,
         accessToken: token.accessToken as string,

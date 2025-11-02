@@ -12,7 +12,7 @@ import {
   EmptyState,
   Badge,
 } from "@/app/components/ui";
-import { BuildingOfficeIcon, UserGroupIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { BuildingOfficeIcon, UserGroupIcon, PlusIcon, XMarkIcon, RocketLaunchIcon } from "@heroicons/react/24/outline";
 import type { Household } from "@/types/household";
 
 interface TenantRow {
@@ -35,12 +35,23 @@ export default function DashboardPage() {
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showOnboardingBanner, setShowOnboardingBanner] = useState(false);
 
   useEffect(() => {
     if (session) {
       loadDashboardData();
     }
   }, [session]);
+
+  // Check if onboarding banner should be shown
+  useEffect(() => {
+    if (user?.role === 'landlord' && !user?.is_onboarded) {
+      const dismissed = localStorage.getItem('onboarding_banner_dismissed');
+      if (!dismissed || dismissed === 'temporary') {
+        setShowOnboardingBanner(true);
+      }
+    }
+  }, [user]);
 
   const loadDashboardData = async () => {
     try {
@@ -92,6 +103,20 @@ export default function DashboardPage() {
     router.push("/onboarding");
   };
 
+  const handleStartOnboarding = () => {
+    router.push("/onboarding");
+  };
+
+  const handleRemindLater = () => {
+    localStorage.setItem('onboarding_banner_dismissed', 'temporary');
+    setShowOnboardingBanner(false);
+  };
+
+  const handleDismissPermanently = () => {
+    localStorage.setItem('onboarding_banner_dismissed', 'permanent');
+    setShowOnboardingBanner(false);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -126,6 +151,63 @@ export default function DashboardPage() {
               </Button>
             )}
           </div>
+
+          {/* Onboarding Banner */}
+          {showOnboardingBanner && (
+            <div className="mt-8 relative">
+              <div className="bg-gradient-to-r from-primary to-primary-dark rounded-xl p-6 shadow-lg">
+                <button
+                  onClick={handleDismissPermanently}
+                  className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/20 transition-colors"
+                  aria-label="Dismiss permanently"
+                >
+                  <XMarkIcon className="w-5 h-5 text-white" />
+                </button>
+                <div className="flex items-start space-x-4">
+                  <div className="flex-shrink-0">
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <RocketLaunchIcon className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-white mb-2">
+                      Complete Your Setup
+                    </h3>
+                    <p className="text-white/90 mb-4">
+                      Get started by adding your first household and tenants to unlock all features
+                    </p>
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="flex-1 bg-white/20 rounded-full h-2">
+                        <div
+                          className="bg-white rounded-full h-2 transition-all duration-300"
+                          style={{ width: `${Math.min((households.length / 1) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm text-white font-medium">
+                        {households.length} household{households.length !== 1 ? 's' : ''} added
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Button
+                        onClick={handleStartOnboarding}
+                        variant="secondary"
+                        className="bg-white text-primary hover:bg-gray-100"
+                      >
+                        Get Started
+                      </Button>
+                      <Button
+                        onClick={handleRemindLater}
+                        variant="ghost"
+                        className="text-white hover:bg-white/10"
+                      >
+                        Remind Me Later
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Statistics Cards */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">

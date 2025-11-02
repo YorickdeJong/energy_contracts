@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
-from .models import User, Household, HouseholdMembership, TenancyAgreement, TenantInvitation
+from .models import User, Household, HouseholdMembership, TenancyAgreement, TenantInvitation, Tenancy, Renter
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -75,6 +75,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Custom JWT token serializer that includes user data."""
+    username_field = 'email'
 
     @classmethod
     def get_token(cls, user):
@@ -210,3 +211,135 @@ class InvitationAcceptSerializer(serializers.Serializer):
                 'password': 'Password fields did not match.'
             })
         return attrs
+
+
+# ==================== Tenancy Serializers ====================
+
+class RenterUserSerializer(serializers.ModelSerializer):
+    """Simplified user serializer for renter data."""
+
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'first_name', 'last_name', 'phone_number')
+        read_only_fields = fields
+
+
+class RenterSerializer(serializers.ModelSerializer):
+    """Serializer for Renter model."""
+    user = RenterUserSerializer(read_only=True)
+    user_id = serializers.IntegerField(write_only=True, required=False)
+
+    class Meta:
+        model = Renter
+        fields = (
+            'id',
+            'tenancy',
+            'user',
+            'user_id',
+            'is_primary',
+            'joined_at',
+        )
+        read_only_fields = ('id', 'joined_at')
+
+
+class TenancySerializer(serializers.ModelSerializer):
+    """Serializer for Tenancy model."""
+    household_name = serializers.CharField(source='household.name', read_only=True)
+    renter_count = serializers.ReadOnlyField()
+    renters = RenterSerializer(many=True, read_only=True)
+    primary_renter = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Tenancy
+        fields = (
+            'id',
+            'household',
+            'household_name',
+            'status',
+            'start_date',
+            'end_date',
+            'monthly_rent',
+            'deposit',
+            'proof_document',
+            'renter_count',
+            'renters',
+            'primary_renter',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = ('id', 'created_at', 'updated_at')
+
+    def get_primary_renter(self, obj):
+        """Get the primary renter for this tenancy."""
+        primary = obj.primary_renter
+        if primary:
+            return RenterUserSerializer(primary.user).data
+        return None
+
+    def validate(self, attrs):
+        """Validate tenancy data."""
+        # Validate dates
+        start_date = attrs.get('start_date') or (self.instance.start_date if self.instance else None)
+        end_date = attrs.get('end_date')
+
+        if end_date and start_date and end_date <= start_date:
+            raise serializers.ValidationError({
+                'end_date': 'End date must be after start date.'
+            })
+
+        # Validate only one active tenancy per household
+        if attrs.get('status') == 'active' or (self.instance and self.instance.status == 'active'):
+            household = attrs.get('household') or (self.instance.household if self.instance else None)
+
+            if household:
+                existing_active = Tenancy.objects.filter(
+                    household=household,
+                    status='active'
+                )
+
+                # Exclude current instance if updating
+                if self.instance:
+                    existing_active = existing_active.exclude(pk=self.instance.pk)
+
+                if existing_active.exists():
+                    raise serializers.ValidationError({
+                        'status': f'Household "{household.name}" already has an active tenancy. '
+                                 'Please move out the current tenancy before activating a new one.'
+                    })
+
+        return attrs
+
+
+class TenancyListSerializer(serializers.ModelSerializer):
+    """Simplified serializer for listing tenancies."""
+    household_name = serializers.CharField(source='household.name', read_only=True)
+    renter_count = serializers.ReadOnlyField()
+    primary_renter = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Tenancy
+        fields = (
+            'id',
+            'household',
+            'household_name',
+            'status',
+            'start_date',
+            'end_date',
+            'monthly_rent',
+            'deposit',
+            'renter_count',
+            'primary_renter',
+            'created_at',
+        )
+        read_only_fields = fields
+
+    def get_primary_renter(self, obj):
+        """Get the primary renter name."""
+        primary = obj.primary_renter
+        if primary:
+            return {
+                'id': primary.user.id,
+                'name': primary.user.get_full_name(),
+                'email': primary.user.email,
+            }
+        return None

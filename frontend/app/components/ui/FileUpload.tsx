@@ -2,6 +2,13 @@
 
 import { useState, useRef, DragEvent, ChangeEvent } from "react";
 import Button from "./Button";
+import {
+  DocumentTextIcon,
+  PhotoIcon,
+  TableCellsIcon,
+  DocumentIcon,
+  PaperClipIcon,
+} from "@heroicons/react/24/outline";
 
 export interface FileUploadProps {
   accept?: string;
@@ -121,23 +128,25 @@ const FileUpload = ({
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
   };
 
-  const getFileIcon = (fileName: string): string => {
+  const getFileIcon = (fileName: string) => {
     const extension = fileName.split(".").pop()?.toLowerCase();
+    const iconClassName = "w-6 h-6";
+
     switch (extension) {
       case "pdf":
-        return "📄";
+        return <DocumentTextIcon className={iconClassName} />;
       case "jpg":
       case "jpeg":
       case "png":
-        return "🖼️";
+        return <PhotoIcon className={iconClassName} />;
       case "xlsx":
       case "xls":
-        return "📊";
+        return <TableCellsIcon className={iconClassName} />;
       case "doc":
       case "docx":
-        return "📝";
+        return <DocumentIcon className={iconClassName} />;
       default:
-        return "📎";
+        return <PaperClipIcon className={iconClassName} />;
     }
   };
 

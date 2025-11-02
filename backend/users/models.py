@@ -224,6 +224,135 @@ class TenancyAgreement(models.Model):
         return f"Tenancy Agreement for {self.household.name} - {self.status}"
 
 
+class Tenancy(models.Model):
+    """A tenancy period for a household with specific start/end dates and status"""
+
+    STATUS_CHOICES = [
+        ('future', 'Future'),           # Scheduled for future
+        ('active', 'Active'),           # Currently active
+        ('moving_out', 'Moving Out'),   # Notice given, end date set
+        ('moved_out', 'Moved Out'),     # Past tenancy
+    ]
+
+    household = models.ForeignKey(
+        Household,
+        on_delete=models.CASCADE,
+        related_name='tenancies'
+    )
+    name = models.CharField(max_length=255, default='Unnamed Tenancy')  # e.g., "2024-2025 Lease"
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='future',
+        db_index=True
+    )
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    monthly_rent = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00
+    )
+    deposit = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00
+    )
+    proof_document = models.FileField(
+        upload_to='tenancy_proofs/%Y/%m/',
+        null=True,
+        blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'tenancy'
+        verbose_name_plural = 'tenancies'
+        ordering = ['-start_date']
+        constraints = [
+            # Ensure only one active tenancy per household
+            models.UniqueConstraint(
+                fields=['household'],
+                condition=models.Q(status='active'),
+                name='one_active_tenancy_per_household'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.household.name} - {self.get_status_display()} ({self.start_date})"
+
+    @property
+    def renter_count(self):
+        """Return the number of renters in this tenancy"""
+        return self.renters.count()
+
+    @property
+    def primary_renter(self):
+        """Return the primary renter for this tenancy"""
+        return self.renters.filter(is_primary=True).first()
+
+    def clean(self):
+        """Validate model data"""
+        from django.core.exceptions import ValidationError
+
+        # Validate end_date is after start_date
+        if self.end_date and self.start_date and self.end_date <= self.start_date:
+            raise ValidationError('End date must be after start date')
+
+        # Validate only one active tenancy per household
+        if self.status == 'active':
+            existing_active = Tenancy.objects.filter(
+                household=self.household,
+                status='active'
+            ).exclude(pk=self.pk)
+            if existing_active.exists():
+                raise ValidationError(
+                    f'Household "{self.household.name}" already has an active tenancy. '
+                    'Please move out the current tenancy before activating a new one.'
+                )
+
+
+class Renter(models.Model):
+    """A person who is part of a specific tenancy period"""
+
+    tenancy = models.ForeignKey(
+        Tenancy,
+        on_delete=models.CASCADE,
+        related_name='renters'
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='renter_tenancies'
+    )
+    is_primary = models.BooleanField(
+        default=False,
+        help_text='Primary contact for this tenancy'
+    )
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'renter'
+        verbose_name_plural = 'renters'
+        ordering = ['-is_primary', 'joined_at']
+        unique_together = [['tenancy', 'user']]  # User can only be in tenancy once
+
+    def __str__(self):
+        primary = ' (Primary)' if self.is_primary else ''
+        return f"{self.user.get_full_name()}{primary} - {self.tenancy}"
+
+    def save(self, *args, **kwargs):
+        """Ensure only one primary renter per tenancy"""
+        if self.is_primary:
+            # Set all other renters in this tenancy to non-primary
+            Renter.objects.filter(
+                tenancy=self.tenancy,
+                is_primary=True
+            ).exclude(pk=self.pk).update(is_primary=False)
+        super().save(*args, **kwargs)
+
+
 class TenantInvitation(models.Model):
     """Invitation for a tenant to join a household"""
 

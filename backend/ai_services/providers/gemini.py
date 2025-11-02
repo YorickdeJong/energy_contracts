@@ -23,18 +23,49 @@ class GeminiProvider(BaseAIProvider):
         '.doc': 'application/msword',
     }
 
-    EXTRACTION_PROMPT = """Extract tenant information from this tenancy agreement document.
+    EXTRACTION_PROMPT = """Extract complete tenancy information from this tenancy agreement document.
 Please identify and return the following information in JSON format:
-- first_name: The tenant's first name
-- last_name: The tenant's last or family name
-- email: The tenant's email address
-- phone_number: The tenant's phone number
+
+Tenancy Details:
+- start_date: The tenancy start date (format: YYYY-MM-DD)
+- end_date: The tenancy end date if specified (format: YYYY-MM-DD), or null if open-ended
+- monthly_rent: The monthly rent amount as a number (without currency symbols)
+- deposit: The security deposit amount as a number (without currency symbols), or null if not specified
+
+Renters Information (extract ALL people who are signing/renting):
+- renters: An array of renter objects, each with:
+  - first_name: The renter's first name
+  - last_name: The renter's last or family name
+  - email: The renter's email address (or null if not found)
+  - phone_number: The renter's phone number (or null if not found)
+  - is_primary: true for the primary/first renter, false for others
 
 If any field is not found in the document, return null for that field.
-Return ONLY valid JSON, no additional text.
+Return ONLY valid JSON, no additional text or explanations.
 
 Example response format:
-{"first_name": "John", "last_name": "Doe", "email": "john@example.com", "phone_number": "+31612345678"}"""
+{
+  "start_date": "2024-01-15",
+  "end_date": "2025-01-14",
+  "monthly_rent": 1500.00,
+  "deposit": 3000.00,
+  "renters": [
+    {
+      "first_name": "John",
+      "last_name": "Doe",
+      "email": "john@example.com",
+      "phone_number": "+31612345678",
+      "is_primary": true
+    },
+    {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "email": "jane@example.com",
+      "phone_number": "+31687654321",
+      "is_primary": false
+    }
+  ]
+}"""
 
     def __init__(self):
         """Initialize Gemini provider with API key"""
@@ -125,15 +156,21 @@ Example response format:
                 logger.error(f"Failed to parse JSON response: {response_text}")
                 raise ValueError(f"Invalid JSON response from AI: {str(e)}")
 
-            # Validate the structure
+            # Validate the structure and extract all fields
             result = {
-                'first_name': extracted_data.get('first_name'),
-                'last_name': extracted_data.get('last_name'),
-                'email': extracted_data.get('email'),
-                'phone_number': extracted_data.get('phone_number'),
+                'start_date': extracted_data.get('start_date'),
+                'end_date': extracted_data.get('end_date'),
+                'monthly_rent': extracted_data.get('monthly_rent'),
+                'deposit': extracted_data.get('deposit'),
+                'renters': extracted_data.get('renters', []),
+                # Keep backward compatibility with old single-tenant format
+                'first_name': extracted_data.get('first_name') or (extracted_data.get('renters', [{}])[0].get('first_name') if extracted_data.get('renters') else None),
+                'last_name': extracted_data.get('last_name') or (extracted_data.get('renters', [{}])[0].get('last_name') if extracted_data.get('renters') else None),
+                'email': extracted_data.get('email') or (extracted_data.get('renters', [{}])[0].get('email') if extracted_data.get('renters') else None),
+                'phone_number': extracted_data.get('phone_number') or (extracted_data.get('renters', [{}])[0].get('phone_number') if extracted_data.get('renters') else None),
             }
 
-            logger.info(f"Successfully extracted tenant data: {result}")
+            logger.info(f"Successfully extracted tenancy data: {result}")
             return result
 
         except Exception as e:
