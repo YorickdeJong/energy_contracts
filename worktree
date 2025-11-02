@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+#
+# Git Worktree Helper Script
+# Simplifies creating, managing, and switching between feature branches using git worktrees
+#
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKTREES_DIR="$SCRIPT_DIR/worktrees"
+MAIN_BRANCH="main"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Helper functions
+print_error() {
+    echo -e "${RED}Error: $1${NC}" >&2
+}
+
+print_success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+print_info() {
+    echo -e "${BLUE}ℹ $1${NC}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠ $1${NC}"
+}
+
+# Show usage
+show_usage() {
+    cat << EOF
+Git Worktree Helper
+
+Usage: ./worktree <command> [arguments]
+
+Commands:
+    new <feature-name>          Create a new worktree for a feature branch
+    list                        List all worktrees
+    remove <feature-name>       Remove a worktree and optionally its branch
+    switch <feature-name>       Open the worktree directory (for quick navigation)
+    clean                       Remove all worktrees that no longer exist
+    help                        Show this help message
+
+Examples:
+    ./worktree new user-authentication
+    ./worktree list
+    ./worktree remove user-authentication
+    ./worktree switch user-authentication
+
+EOF
+}
+
+# Initialize worktrees directory
+init_worktrees() {
+    if [ ! -d "$WORKTREES_DIR" ]; then
+        mkdir -p "$WORKTREES_DIR"
+        print_success "Created worktrees directory: $WORKTREES_DIR"
+    fi
+}
+
+# Create a new worktree
+create_worktree() {
+    local feature_name="$1"
+
+    if [ -z "$feature_name" ]; then
+        print_error "Feature name is required"
+        echo "Usage: ./worktree new <feature-name>"
+        exit 1
+    fi
+
+    # Sanitize feature name (replace spaces with hyphens, lowercase)
+    feature_name=$(echo "$feature_name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+    local branch_name="feature/$feature_name"
+    local worktree_path="$WORKTREES_DIR/$feature_name"
+
+    # Check if worktree already exists
+    if [ -d "$worktree_path" ]; then
+        print_error "Worktree already exists at $worktree_path"
+        exit 1
+    fi
+
+    # Check if branch already exists
+    if git show-ref --verify --quiet "refs/heads/$branch_name"; then
+        print_warning "Branch $branch_name already exists, creating worktree from existing branch"
+        git worktree add "$worktree_path" "$branch_name"
+    else
+        print_info "Creating new branch: $branch_name"
+        git worktree add -b "$branch_name" "$worktree_path" "$MAIN_BRANCH"
+    fi
+
+    print_success "Worktree created at: $worktree_path"
+    print_info "To start working:"
+    echo -e "  ${BLUE}cd $worktree_path${NC}"
+    echo -e "  ${BLUE}cd frontend && pnpm install && pnpm dev${NC}"
+}
+
+# List all worktrees
+list_worktrees() {
+    print_info "Git Worktrees:"
+    git worktree list
+
+    echo ""
+    print_info "Worktrees directory contents:"
+    if [ -d "$WORKTREES_DIR" ] && [ "$(ls -A "$WORKTREES_DIR" 2>/dev/null)" ]; then
+        ls -lh "$WORKTREES_DIR"
+    else
+        echo "  (empty)"
+    fi
+}
+
+# Remove a worktree
+remove_worktree() {
+    local feature_name="$1"
+
+    if [ -z "$feature_name" ]; then
+        print_error "Feature name is required"
+        echo "Usage: ./worktree remove <feature-name>"
+        exit 1
+    fi
+
+    local worktree_path="$WORKTREES_DIR/$feature_name"
+    local branch_name="feature/$feature_name"
+
+    # Check if worktree exists
+    if [ ! -d "$worktree_path" ]; then
+        print_error "Worktree not found at $worktree_path"
+        exit 1
+    fi
+
+    # Remove the worktree
+    print_info "Removing worktree: $worktree_path"
+    git worktree remove "$worktree_path" || git worktree remove --force "$worktree_path"
+
+    # Ask if user wants to delete the branch
+    read -p "Do you want to delete the branch '$branch_name'? (y/N) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if git show-ref --verify --quiet "refs/heads/$branch_name"; then
+            git branch -D "$branch_name"
+            print_success "Branch $branch_name deleted"
+        else
+            print_warning "Branch $branch_name not found"
+        fi
+    fi
+
+    print_success "Worktree removed"
+}
+
+# Switch to worktree (print path for cd)
+switch_worktree() {
+    local feature_name="$1"
+
+    if [ -z "$feature_name" ]; then
+        print_error "Feature name is required"
+        echo "Usage: ./worktree switch <feature-name>"
+        exit 1
+    fi
+
+    local worktree_path="$WORKTREES_DIR/$feature_name"
+
+    if [ ! -d "$worktree_path" ]; then
+        print_error "Worktree not found at $worktree_path"
+        exit 1
+    fi
+
+    print_success "Worktree path: $worktree_path"
+    print_info "Run: cd $worktree_path"
+}
+
+# Clean up stale worktrees
+clean_worktrees() {
+    print_info "Cleaning up stale worktrees..."
+    git worktree prune
+    print_success "Cleanup complete"
+}
+
+# Main script logic
+main() {
+    # Ensure we're in a git repository
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+        print_error "Not a git repository"
+        exit 1
+    fi
+
+    # Initialize worktrees directory
+    init_worktrees
+
+    # Parse command
+    local command="${1:-help}"
+
+    case "$command" in
+        new)
+            create_worktree "$2"
+            ;;
+        list|ls)
+            list_worktrees
+            ;;
+        remove|rm)
+            remove_worktree "$2"
+            ;;
+        switch|sw)
+            switch_worktree "$2"
+            ;;
+        clean)
+            clean_worktrees
+            ;;
+        help|--help|-h)
+            show_usage
+            ;;
+        *)
+            print_error "Unknown command: $command"
+            echo ""
+            show_usage
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
