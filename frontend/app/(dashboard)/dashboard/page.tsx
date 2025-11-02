@@ -90,9 +90,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background-secondary">
+    <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-background border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
