@@ -25,13 +25,10 @@ export const authConfig: NextAuthConfig = {
 
           if (response.user && response.access) {
             return {
+              ...response.user,
               id: response.user.id.toString(),
-              email: response.user.email,
-              name: `${response.user.first_name} ${response.user.last_name}`.trim() || response.user.email,
-              image: response.user.profile_picture,
               accessToken: response.access,
               refreshToken: response.refresh,
-              user: response.user,
             };
           }
 
@@ -47,11 +44,25 @@ export const authConfig: NextAuthConfig = {
     async jwt({ token, user, account }) {
       // Initial sign in
       if (account && user) {
+        const appUser = user as unknown as User & { accessToken?: string; refreshToken?: string };
         return {
           ...token,
-          accessToken: (user as any).accessToken,
-          refreshToken: (user as any).refreshToken,
-          user: (user as any).user,
+          accessToken: appUser.accessToken!,
+          refreshToken: appUser.refreshToken!,
+          user: {
+            id: Number(appUser.id),
+            email: appUser.email,
+            first_name: appUser.first_name,
+            last_name: appUser.last_name,
+            phone_number: appUser.phone_number,
+            profile_picture: appUser.profile_picture,
+            role: appUser.role,
+            is_active: appUser.is_active,
+            is_verified: appUser.is_verified,
+            is_onboarded: appUser.is_onboarded,
+            onboarding_step: appUser.onboarding_step,
+            date_joined: appUser.date_joined,
+          },
         };
       }
 
@@ -63,10 +74,7 @@ export const authConfig: NextAuthConfig = {
         ...session,
         accessToken: token.accessToken as string,
         refreshToken: token.refreshToken as string,
-        user: {
-          ...session.user,
-          ...(token.user as User),
-        },
+        user: token.user as User,
       } as any;
     },
   },

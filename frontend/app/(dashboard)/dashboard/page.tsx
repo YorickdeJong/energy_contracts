@@ -173,14 +173,11 @@ export default function DashboardPage() {
           {tenants.length === 0 ? (
             <div className="p-12">
               <EmptyState
-                icon={<UserGroupIcon className="w-16 h-16 text-text-tertiary" />}
+                icon={UserGroupIcon}
                 title="No tenants yet"
                 description="Add your first household to start managing tenants"
-                action={
-                  <Button onClick={handleAddHousehold}>
-                    Add Your First Household
-                  </Button>
-                }
+                actionLabel="Add Your First Household"
+                onAction={handleAddHousehold}
               />
             </div>
           ) : (
@@ -246,7 +243,7 @@ export default function DashboardPage() {
                       </td>
                       <td className="px-6 py-4">
                         <Badge
-                          variant={tenant.is_active ? "success" : "default"}
+                          variant={tenant.is_active ? "success" : "secondary"}
                         >
                           {tenant.is_active ? "Active" : "Inactive"}
                         </Badge>

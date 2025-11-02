@@ -9,7 +9,8 @@ declare module "next-auth" {
     user: AppUser;
   }
 
-  interface User extends AppUser {
+  interface User extends Omit<AppUser, "id"> {
+    id: string;
     accessToken?: string;
     refreshToken?: string;
   }
