@@ -12,7 +12,8 @@ import {
   CheckCircleIcon,
   UserCircleIcon,
   QuestionMarkCircleIcon,
-  Bars3Icon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import Avatar from "../ui/Avatar";
 
@@ -119,7 +120,11 @@ export default function Sidebar() {
             `}
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <Bars3Icon className="h-6 w-6" />
+            {isCollapsed ? (
+              <ChevronRightIcon className="h-6 w-6" />
+            ) : (
+              <ChevronLeftIcon className="h-6 w-6" />
+            )}
           </button>
         </div>
       </nav>
