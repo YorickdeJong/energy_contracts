@@ -1,0 +1,49 @@
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.forms import UserChangeForm, UserCreationForm
+from .models import User
+
+
+class CustomUserCreationForm(UserCreationForm):
+    """Custom form for creating users."""
+
+    class Meta:
+        model = User
+        fields = ('email',)
+
+
+class CustomUserChangeForm(UserChangeForm):
+    """Custom form for changing users."""
+
+    class Meta:
+        model = User
+        fields = ('email', 'first_name', 'last_name', 'phone_number', 'role')
+
+
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    """Custom admin for User model."""
+
+    form = CustomUserChangeForm
+    add_form = CustomUserCreationForm
+
+    list_display = ('email', 'first_name', 'last_name', 'role', 'is_active', 'is_verified', 'date_joined')
+    list_filter = ('is_staff', 'is_superuser', 'is_active', 'is_verified', 'role')
+    search_fields = ('email', 'first_name', 'last_name')
+    ordering = ('-date_joined',)
+
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Personal Info', {'fields': ('first_name', 'last_name', 'phone_number', 'profile_picture')}),
+        ('Permissions', {'fields': ('role', 'is_active', 'is_verified', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+    )
+
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email', 'password1', 'password2', 'role'),
+        }),
+    )
+
+    readonly_fields = ('date_joined', 'last_login')
