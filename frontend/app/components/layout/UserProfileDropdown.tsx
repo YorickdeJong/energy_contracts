@@ -47,8 +47,10 @@ export default function UserProfileDropdown() {
       // Log error but continue with logout
       console.error("Error during logout:", error);
     } finally {
-      // Clear session and redirect to login
-      await signOut({ callbackUrl: "/login" });
+      // Clear session (without redirect parameter for NextAuth v5 beta)
+      await signOut({ redirect: false });
+      // Manually redirect to login page
+      router.push("/login");
     }
   };
 
