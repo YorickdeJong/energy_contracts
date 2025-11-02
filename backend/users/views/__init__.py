@@ -5,6 +5,7 @@ from .auth import (
     RefreshTokenView,
     CurrentUserView,
 )
+from .households import HouseholdViewSet
 
 # Try to import OnboardingViewSet, but don't fail if dependencies are missing
 try:
@@ -15,6 +16,7 @@ try:
         'LogoutView',
         'RefreshTokenView',
         'CurrentUserView',
+        'HouseholdViewSet',
         'OnboardingViewSet',
     ]
 except ImportError:
@@ -24,4 +26,5 @@ except ImportError:
         'LogoutView',
         'RefreshTokenView',
         'CurrentUserView',
+        'HouseholdViewSet',
     ]

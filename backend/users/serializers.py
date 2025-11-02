@@ -19,9 +19,11 @@ class UserSerializer(serializers.ModelSerializer):
             'role',
             'is_active',
             'is_verified',
+            'is_onboarded',
+            'onboarding_step',
             'date_joined',
         )
-        read_only_fields = ('id', 'email', 'role', 'is_active', 'is_verified', 'date_joined')
+        read_only_fields = ('id', 'email', 'role', 'is_active', 'is_verified', 'is_onboarded', 'onboarding_step', 'date_joined')
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

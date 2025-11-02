@@ -6,12 +6,16 @@ from .views import (
     LogoutView,
     RefreshTokenView,
     CurrentUserView,
+    HouseholdViewSet,
 )
 
 app_name = 'users'
 
 # Create router for ViewSets
 router = DefaultRouter()
+
+# Register HouseholdViewSet
+router.register(r'households', HouseholdViewSet, basename='household')
 
 # Try to import and register OnboardingViewSet if available
 try:
