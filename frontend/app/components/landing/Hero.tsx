@@ -2,63 +2,55 @@
 
 import Link from "next/link";
 import { Button } from "@/app/components/ui";
-import { ArrowRightIcon, PlayCircleIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import Image from "next/image";
 
 export default function Hero() {
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-  };
 
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
+    <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
       {/* Background Image with Gradient Overlay */}
       <div className="absolute inset-0 z-0">
-        <img
-          src="/Wind_Energy_Companies.webp"
+        <Image
+          src="/wind-turbine_2.jpg"
           alt="Wind Energy Background"
-          className="w-full h-full object-cover"
+          fill
+          style={{ objectFit: 'cover', opacity: 0.5 }}
+          priority
+          quality={100}
+          className="w-full h-full object-cover animate-slowZoom"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary-dark/85 to-primary/80" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary-dark/35 to-primary/80" />
       </div>
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-4xl mx-auto text-center">
           {/* Headline */}
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight animate-fadeInUp">
             Manage Your Rental Properties with{" "}
             <span className="text-white/90">Confidence</span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-xl sm:text-2xl text-white/90 mb-10 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl sm:text-2xl text-white/90 mb-10 max-w-3xl mx-auto leading-relaxed animate-fadeInUp stagger-1">
             Streamline tenancy agreements, track energy contracts, and keep all your property documents in one secure place
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 animate-fadeInUp stagger-2">
             <Link href="/register">
               <Button
-                className="w-full sm:w-auto px-8 py-4 text-lg bg-white text-primary hover:bg-white/90 shadow-xl rounded-xl font-medium transition-all duration-200"
+                className="w-full sm:w-auto px-8 py-4 text-lg bg-white !text-black hover:bg-white/90 hover:scale-105 shadow-xl rounded-xl font-medium transition-all duration-200"
               >
                 Sign Up Free
-                <ArrowRightIcon className="h-5 w-5 ml-2" />
+                <ArrowRightIcon className="h-5 w-5 ml-2 text-black" />
               </Button>
             </Link>
-            <button
-              onClick={() => scrollToSection("how-it-works")}
-              className="w-full sm:w-auto px-8 py-4 text-lg bg-white/10 text-white hover:bg-white/20 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm border border-white/20 flex items-center justify-center"
-            >
-              <PlayCircleIcon className="h-5 w-5 mr-2" />
-              See How It Works
-            </button>
           </div>
 
           {/* Trust Indicators */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 text-white/80 text-sm">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 text-white/80 text-sm animate-fadeInUp stagger-3">
             <div className="flex items-center">
               <svg className="h-5 w-5 text-white mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />

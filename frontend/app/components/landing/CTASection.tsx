@@ -1,11 +1,16 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/app/components/ui";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import { useScrollAnimation } from "@/app/hooks/useScrollAnimation";
 
 export default function CTASection() {
+  const { ref, isVisible } = useScrollAnimation();
+
   return (
-    <section id="cta" className="py-24 bg-gradient-to-br from-primary via-primary-dark to-primary">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <section ref={ref} id="cta" className="py-24 bg-gradient-to-br from-primary via-primary-dark to-primary">
+      <div className={`max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center ${isVisible ? 'animate-fadeInUp' : ''}`}>
         <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
           Ready to Simplify Property Management?
         </h2>
@@ -16,7 +21,7 @@ export default function CTASection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
           <Link href="/register">
             <Button
-              className="w-full sm:w-auto px-10 py-4 text-lg bg-white text-primary hover:bg-white/90 hover:scale-105 shadow-xl rounded-xl font-medium transition-all duration-200"
+              className="w-full sm:w-auto px-10 py-4 text-lg bg-white !text-black hover:bg-white/90 hover:scale-105 shadow-xl rounded-xl font-medium transition-all duration-200"
             >
               Sign Up Free
               <ArrowRightIcon className="h-5 w-5 ml-2" />

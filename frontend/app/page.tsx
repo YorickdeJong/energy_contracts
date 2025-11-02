@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import LandingHeader from "./components/landing/LandingHeader";
 import Hero from "./components/landing/Hero";
 import Features from "./components/landing/Features";
 import HowItWorks from "./components/landing/HowItWorks";
@@ -14,14 +15,17 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background">
-      <Hero />
-      <Features />
-      <HowItWorks />
-      <Benefits />
-      <TrustBadges />
-      <CTASection />
-      <LandingFooter />
-    </main>
+    <>
+      <LandingHeader />
+      <main className="min-h-screen bg-background">
+        <Hero />
+        <Features />
+        <HowItWorks />
+        <Benefits />
+        {/* <TrustBadges /> */}
+        <CTASection />
+        <LandingFooter />
+      </main>
+    </>
   );
 }

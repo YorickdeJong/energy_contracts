@@ -1,7 +1,11 @@
+"use client";
+
 import { UserPlusIcon, CloudArrowUpIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import { useScrollAnimation } from "@/app/hooks/useScrollAnimation";
 import Image from "next/image";
 
 export default function HowItWorks() {
+  const { ref, isVisible } = useScrollAnimation();
   const steps = [
     {
       number: "01",
@@ -24,15 +28,16 @@ export default function HowItWorks() {
   ];
 
   return (
-    <section id="how-it-works" className="py-24  overflow-hidden relative">
-      <Image src="/g-pulse-energieautarke-haeuser-haus-solaranlage-istock_30371_1686745777.webp" alt="Wind Energy" width={1000} height={1000} className="w-full h-full object-cover absolute top-0 left-0  z-[-1]"  />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-background-secondary">
+    <section ref={ref} id="how-it-works" className="py-24 overflow-hidden relative">
+      {/* <Image src="/g-pulse-energieautarke-haeuser-haus-solaranlage-istock_30371_1686745777.webp" alt="Wind Energy" fill className="w-full h-full object-cover absolute top-0 left-0 opacity-100 z-0"  /> */}
+      <div className="absolute inset-0 bg-blue-50 z-0"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-50 relative">
         {/* Section Header */}
-        <div className="text-center mb-16">
+        <div className={`text-center mb-16 z-10 ${isVisible ? 'animate-fadeInUp' : ''}`}>
           <h2 className="text-4xl sm:text-5xl font-bold text-text-primary mb-4">
             Get Started in 3 Simple Steps
           </h2>
-          <p className="text-xl text-text-secondary max-w-2xl mx-auto">
+          <p className="text-xl text-gray-500 max-w-2xl mx-auto">
             From signup to managing multiple properties takes just minutes. No technical expertise required.
           </p>
         </div>
@@ -43,14 +48,14 @@ export default function HowItWorks() {
           <div className="hidden md:block absolute top-1/4 left-0 right-0 h-0.5 bg-border -z-0" />
 
           {steps.map((step, index) => (
-            <div key={index} className="relative">
+            <div key={index} className={`relative ${isVisible ? `animate-fadeInUp stagger-${index + 1}` : ''}`}>
               {/* Number Badge */}
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center text-xl font-bold z-10 shadow-lg">
                 {index + 1}
               </div>
 
               {/* Step Card */}
-              <div className="bg-white rounded-2xl p-8 shadow-sm border border-border pt-12 h-full">
+              <div className="bg-white rounded-2xl p-8 shadow-sm border border-border pt-12 h-full hover:shadow-lg hover:scale-105 transition-all duration-300">
                 <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-xl mb-6 mx-auto">
                   <step.icon className="h-8 w-8 text-primary" />
                 </div>

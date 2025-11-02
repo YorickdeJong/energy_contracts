@@ -1,6 +1,10 @@
+"use client";
+
 import { ClockIcon, FolderIcon, LockClosedIcon, DevicePhoneMobileIcon, UsersIcon, BoltIcon } from "@heroicons/react/24/outline";
+import { useScrollAnimation } from "@/app/hooks/useScrollAnimation";
 
 export default function Benefits() {
+  const { ref, isVisible } = useScrollAnimation();
   const benefits = [
     {
       icon: ClockIcon,
@@ -35,10 +39,10 @@ export default function Benefits() {
   ];
 
   return (
-    <section className="py-24 bg-background">
+    <section ref={ref} className="py-24 bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center mb-16">
+        <div className={`text-center mb-16 ${isVisible ? 'animate-fadeInUp' : ''}`}>
           <h2 className="text-4xl sm:text-5xl font-bold text-text-primary mb-4">
             Why Landlords Choose Us
           </h2>
@@ -50,7 +54,10 @@ export default function Benefits() {
         {/* Benefits Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {benefits.map((benefit, index) => (
-            <div key={index} className="flex items-start space-x-4 p-6">
+            <div
+              key={index}
+              className={`flex items-start space-x-4 p-6 rounded-xl hover:bg-background-secondary transition-all duration-300 ${isVisible ? `animate-fadeInUp stagger-${index + 1}` : ''}`}
+            >
               <div className="flex-shrink-0">
                 <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
                   <benefit.icon className="h-6 w-6 text-primary" />
